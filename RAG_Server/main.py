@@ -1,0 +1,392 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, field_validator
+from datetime import datetime
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
+from typing import Optional, List
+import os
+import uuid
+import threading
+import time
+
+# ==============================
+# 環境設定（請透過 .env 或環境變數提供）
+# ==============================
+QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
+QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "rag_knowledge")
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
+
+# ==============================
+# 初始化 FastAPI
+# ==============================
+app = FastAPI(title="RAG API")
+
+# 啟用 CORS（跨域設定）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ==============================
+# 初始化 Qdrant
+# ==============================
+client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+
+# 全域變數用於快取模型
+_model = None
+_qa_model = None
+_model_loading = False
+_qa_model_loading = False
+
+
+# ==============================
+# 模型載入
+# ==============================
+def load_models_background():
+    """在背景執行緒中載入模型"""
+    global _model, _qa_model, _model_loading, _qa_model_loading
+    
+    if not _model_loading:
+        _model_loading = True
+        try:
+            print("背景載入 SentenceTransformer 模型...")
+            from sentence_transformers import SentenceTransformer
+            _model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+            print("SentenceTransformer 模型載入完成")
+        except Exception as e:
+            print(f"SentenceTransformer 載入失敗: {e}")
+        _model_loading = False
+    
+    if not _qa_model_loading:
+        _qa_model_loading = True
+        try:
+            print("背景載入 QA 模型...")
+            from transformers import pipeline
+            _qa_model = pipeline("question-answering", model="uer/roberta-base-chinese-extractive-qa")
+            print("QA 模型載入完成")
+        except Exception as e:
+            print(f"QA 模型載入失敗: {e}")
+        _qa_model_loading = False
+
+
+def get_sentence_model():
+    """取得 sentence transformer 模型"""
+    global _model, _model_loading
+    if _model is None and not _model_loading:
+        thread = threading.Thread(target=load_models_background)
+        thread.daemon = True
+        thread.start()
+    return _model
+
+
+def get_qa_model():
+    """取得 QA 模型"""
+    global _qa_model, _qa_model_loading
+    if _qa_model is None and not _qa_model_loading:
+        thread = threading.Thread(target=load_models_background)
+        thread.daemon = True
+        thread.start()
+    return _qa_model
+
+
+# ==============================
+# 資料模型
+# ==============================
+class CaseInsensitiveModel(BaseModel):
+    class Config:
+        alias_generator = lambda s: s.lower()
+        allow_population_by_field_name = True
+        populate_by_name = True
+
+
+class QdrantPayload(CaseInsensitiveModel):
+    id: Optional[str] = Field(default=None)
+    referenId: Optional[str] = Field(default=None)
+    type: str
+    question: str
+    answer: str
+    source: Optional[str] = None
+    version: Optional[str] = "v1.0"
+    language: Optional[str] = "zh-TW"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    @field_validator("id", "referenId", mode="before")
+    def ensure_uuid(cls, v):
+        if not v:
+            return str(uuid.uuid4())
+        return v
+
+
+class QuestionRequest(CaseInsensitiveModel):
+    id: int
+    referenceId: Optional[str] = None
+    qaTypeId: int
+    qaItemTypeId: int
+    question: str
+    answer: str
+
+
+class QuestionListRequest(CaseInsensitiveModel):
+    questions: List[QuestionRequest]
+
+
+class AskRequest(CaseInsensitiveModel):
+    question: str
+    type: Optional[str] = None
+
+
+# ==============================
+# 工具函式
+# ==============================
+def dedup_text(text: str) -> str:
+    """移除重複句子"""
+    sentences = [s.strip() for s in text.split("。") if s.strip()]
+    seen = set()
+    result = []
+    for s in sentences:
+        if s not in seen:
+            seen.add(s)
+            result.append(s)
+    return "。".join(result) + ("。" if result else "")
+
+
+# ==============================
+# 核心功能
+# ==============================
+def ensure_collection(collection_name: str = COLLECTION_NAME):
+    """確保 Collection 存在"""
+    collections = [c.name for c in client.get_collections().collections]
+    if collection_name not in collections:
+        client.recreate_collection(
+            collection_name=collection_name,
+            vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE)
+        )
+
+
+def insert_vectors(collection_name: str, vectors: List[dict]):
+    """批次寫入 Qdrant"""
+    client.upsert(
+        collection_name=collection_name,
+        points=models.Batch(
+            ids=[v["id"] for v in vectors],
+            vectors=[v["vector"] for v in vectors],
+            payloads=[v["payload"] for v in vectors]
+        )
+    )
+
+
+def process_questions_to_vector(request: QuestionListRequest):
+    """將問題轉向量並寫入 Qdrant"""
+    ensure_collection()
+    model = get_sentence_model()
+    
+    if model is None:
+        return {"status": "loading", "message": "模型正在載入中，請稍後再試"}
+    
+    vectors = []
+    for q in request.questions:
+        try:
+            vector = model.encode(q.question).tolist()
+            payload = QdrantPayload(
+                id=q.referenceId if q.referenceId else str(uuid.uuid4()),
+                referenId=str(q.id),
+                type=str(q.qaTypeId),
+                question=q.question,
+                answer=q.answer,
+            )
+            vectors.append({
+                "id": payload.id,
+                "vector": vector,
+                "payload": payload.dict()
+            })
+        except Exception as e:
+            print(f"處理問題時發生錯誤: {e}")
+            raise HTTPException(status_code=400, detail=f"處理問題時發生錯誤")
+
+    if vectors:
+        insert_vectors(COLLECTION_NAME, vectors)
+        return {"status": "success", "vectorIds": [str(v["payload"]["id"]) for v in vectors]}
+    else:
+        raise HTTPException(status_code=400, detail="沒有成功處理任何問題")
+
+
+def generate_answer(request: AskRequest):
+    """查詢 Qdrant 並產生回答"""
+    ensure_collection()
+    model = get_sentence_model()
+    
+    if model is None:
+        raise HTTPException(status_code=400, detail="模型正在載入中，請稍後再試")
+
+    query_vector = model.encode(request.question).tolist()
+
+    query_filter = None
+    if request.type:
+        query_filter = models.Filter(
+            must=[models.FieldCondition(key="type", match=models.MatchValue(value=request.type))]
+        )
+
+    results = client.search(
+        collection_name=COLLECTION_NAME,
+        query_vector=query_vector,
+        limit=3,
+        with_payload=True,
+        query_filter=query_filter
+    )
+
+    if not results:
+        raise HTTPException(status_code=400, detail="找不到相關內容")
+
+    # 去除重複的答案內容
+    unique_answers = []
+    seen_answers = set()
+    for r in results:
+        ans = r.payload.get("answer", "")
+        if ans not in seen_answers:
+            seen_answers.add(ans)
+            unique_answers.append(ans)
+
+    context = "\n".join(unique_answers)
+
+    # 選擇最相似的一筆
+    best_match = max(results, key=lambda r: r.score)
+
+    if best_match and best_match.score > 0.7:
+        print("執行直接匹配")
+        answer = best_match.payload["answer"]
+        confidence = best_match.score
+        method = "direct_match"
+    else:
+        print("執行內容摘要")
+        answer = f"根據相關內容：{context[:500]}..." if len(context) > 500 else context
+        confidence = best_match.score
+        method = "context_summary"
+
+    # 去除句子重複
+    answer = dedup_text(answer)
+
+    print(f"回答方式: {method}, 信心度: {confidence}")
+    return {
+        "answer": answer,
+        "confidence": confidence,
+        "related": [r.payload["question"] for r in results],
+        "method": method
+    }
+
+
+def delete_question_by_id(question_id: str):
+    """刪除指定 ID 的問題"""
+    ensure_collection()
+    result = client.retrieve(collection_name=COLLECTION_NAME, ids=[question_id])
+    if not result:
+        return {"status": "error", "message": f"找不到 ID: {question_id}"}
+    client.delete(
+        collection_name=COLLECTION_NAME,
+        points_selector=models.PointIdsList(points=[question_id])
+    )
+    return {"status": "success", "message": f"已刪除問題 ID: {question_id}"}
+
+
+def delete_type_collection(collection_name: str, type_value: str):
+    """刪除指定 type 向量"""
+    client.delete(
+        collection_name=collection_name,
+        points_selector=models.FilterSelector(
+            filter=models.Filter(
+                must=[models.FieldCondition(key="type", match=models.MatchValue(value=type_value))]
+            )
+        )
+    )
+    return {"status": f"已刪除 type={type_value} 的所有向量"}
+
+
+def get_collections():
+    """列出所有 Qdrant Collections"""
+    cols = [c.name for c in client.get_collections().collections]
+    return {"collections": cols}
+
+
+# ==============================
+# API 層
+# ==============================
+@app.get("/")
+def read_root():
+    return {
+        "message": "RAG API is running",
+        "sentence_model_status": "loaded" if _model else "loading" if _model_loading else "not_loaded",
+        "qa_model_status": "loaded" if _qa_model else "loading" if _qa_model_loading else "not_loaded"
+    }
+
+
+@app.post("/questionsToVector")
+def api_questions_to_vector(request: QuestionListRequest):
+    return process_questions_to_vector(request)
+
+
+@app.post("/ask")
+def api_ask(request: AskRequest):
+    return generate_answer(request)
+
+
+@app.delete("/questions/{question_id}")
+def api_delete_question(question_id: str):
+    return delete_question_by_id(question_id)
+
+
+@app.delete("/delete_type/{type_value}")
+def api_delete_type(type_value: str):
+    return delete_type_collection(COLLECTION_NAME, type_value)
+
+
+@app.get("/collections")
+def api_get_collections():
+    return get_collections()
+
+
+@app.get("/model_status")
+def get_model_status():
+    return {
+        "sentence_model": "loaded" if _model else "loading" if _model_loading else "not_loaded",
+        "qa_model": "loaded" if _qa_model else "loading" if _qa_model_loading else "not_loaded"
+    }
+
+
+@app.get("/questions")
+def list_all_questions(limit: int = 100):
+    """列出所有問題"""
+    ensure_collection()
+    result = client.scroll(
+        collection_name=COLLECTION_NAME,
+        limit=limit,
+        with_payload=True,
+        with_vectors=False
+    )
+    questions = []
+    for point in result[0]:
+        if point.payload:
+            questions.append({
+                "id": point.id,
+                "question": point.payload.get("question", ""),
+                "answer": point.payload.get("answer", ""),
+                "type": point.payload.get("type", ""),
+                "created_at": point.payload.get("created_at", "")
+            })
+    return {"status": "success", "count": len(questions), "questions": questions}
+
+
+# ==============================
+# 啟動事件：背景載入模型
+# ==============================
+@app.on_event("startup")
+async def startup_event():
+    def delayed_load():
+        time.sleep(2)
+        load_models_background()
+    thread = threading.Thread(target=delayed_load)
+    thread.daemon = True
+    thread.start()
