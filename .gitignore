@@ -1,0 +1,57 @@
+# ---------------------------------------------
+# .NET / Visual Studio
+# ---------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.pdb
+
+# ---------------------------------------------
+# 機敏設定檔（請依 *.example 檔自行建立）
+# ---------------------------------------------
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+encryption_config.json
+secrets.json
+*.pfx
+*.p12
+*.key
+
+# ---------------------------------------------
+# 環境變數
+# ---------------------------------------------
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------
+# Python / RAG_Server
+# ---------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ML 模型與向量資料快取
+.cache/
+RAG_Server/models/
+qdrant_storage/
+
+# ---------------------------------------------
+# 作業系統
+# ---------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
