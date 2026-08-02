@@ -1,0 +1,3 @@
+{
+  "JWT_SECRET_KEY": "<請以 base64 隨機字串取代，例如：openssl rand -base64 32>"
+}
