@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Library.Http;
 using Newtonsoft.Json;
+using RAG.Authentication;
 using RAG.Commons.Enums;
 using RAG.Commons.Options;
 using RAG.Models.Dtos.Question;
@@ -18,22 +19,26 @@ namespace RAG.Services
         private readonly IMapper _mapper;
         private readonly RagOption _ragOption;
         private readonly IQuestionsRepo _questionsRepo;
+        private readonly ICurrentUserAccessor _currentUser;
 
         public QuestionService(
             IMapper mapper,
             RagOption ragOption,
-            IQuestionsRepo questionsRepo
+            IQuestionsRepo questionsRepo,
+            ICurrentUserAccessor currentUser
         )
         {
             _mapper = mapper;
             _ragOption = ragOption;
             _questionsRepo = questionsRepo;
+            _currentUser = currentUser;
         }
 
 
 
-        public async Task<List<GetQuestionDto>> GetAsync(int userId, int? Id, QuestionEnum type)
+        public async Task<List<GetQuestionDto>> GetAsync(int? Id, QuestionEnum type)
         {
+            var userId = _currentUser.UserId;
             var entitys = type switch
             {
                 QuestionEnum.All => await GetByAllAsync(userId),
@@ -47,6 +52,7 @@ namespace RAG.Services
         public async Task CreateAsync(CreateQuestionDto dto)
         {
             var entity = _mapper.Map<Questions>(dto);
+            entity.UserID = _currentUser.UserId;
             await _questionsRepo.TransactionAsync();
             try
             {
@@ -63,15 +69,16 @@ namespace RAG.Services
 
         public async Task UpdateAsync(UpdateQuestionDto dto)
         {
-            var question = await _questionsRepo.GetByIdAsync(dto.ID) ?? throw new HttpException((HttpStatusCode)400,"查無問題");
+            var question = await _questionsRepo.GetByIdAsync(dto.ID, _currentUser.UserId) ?? throw new HttpException(HttpStatusCode.NotFound,"查無問題");
             var entity = _mapper.Map<Questions>(dto);
+            entity.UserID = question.UserID;
             entity.CreateAt = question.CreateAt;
             await SendRagToVectorAsync(entity);
         }
 
         public async Task DeleteAsync(int Id)
         {
-            var question = await _questionsRepo.GetByIdAsync(Id) ?? throw new HttpException((HttpStatusCode)400,"查無問題");
+            var question = await _questionsRepo.GetByIdAsync(Id, _currentUser.UserId) ?? throw new HttpException(HttpStatusCode.NotFound,"查無問題");
 
             await _questionsRepo.TransactionAsync();
             try
@@ -105,7 +112,7 @@ namespace RAG.Services
 
         private async Task SendRagToVectorAsync(Questions entity)
         {
-            var question = await _questionsRepo.GetByIdAsync(entity.ID);
+            var question = await _questionsRepo.GetByIdAsync(entity.ID, entity.UserID) ?? throw new HttpException(HttpStatusCode.NotFound, "查無問題");
 
             var httpClient = new HttpClient();
             var url = $"{_ragOption.BaseUrl}{_ragOption.ToVectorUrl}";

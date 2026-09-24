@@ -1,7 +1,10 @@
 ﻿using AutoMapper;
+using Library.Http;
 using Library.Http.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Models.Dtos.Chat;
+using RAG.Models.Dtos.RagServer;
 using RAG.Models.Params.Chat;
 using RAG.Models.ViewModels.Chat;
 using RAG.Services.Interfaces;
@@ -11,6 +14,7 @@ namespace RAG.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     [Tags("回應功能模組")]
     public class ChatController : ControllerBase
     {
@@ -54,7 +58,17 @@ namespace RAG.Controllers
         public async Task ChatStream([FromBody] SendChatParam request)
         {
             var dto = _mapper.Map<ChatDto>(request);
-            var chat = await _chatService.SendChatAsync(dto);
+            ChatReponseDto chat;
+            try
+            {
+                chat = await _chatService.SendChatAsync(dto);
+            }
+            catch (HttpException ex)
+            {
+                Response.StatusCode = (int)ex.StatusCode;
+                await Response.WriteAsJsonAsync(new { error = ex.Message });
+                return;
+            }
 
             var answer = chat.Answer;
             var random = new Random();
@@ -69,23 +83,19 @@ namespace RAG.Controllers
         }
 
         /// <summary>
-        /// 查詢聊天室清單
+        /// 查詢目前使用者的聊天室清單
         /// </summary>
-        /// <param name="request"></param>
         /// <returns></returns>
         [HttpGet]
-        public async Task<IActionResult> GetChatHistory([FromQuery] GetChatParam request)
+        public async Task<IActionResult> GetChatHistory()
         {
-            return await _apiExecutorHandler.RunAsync(async (request) =>
+            return await _apiExecutorHandler.RunAsync(async () =>
             {
-                var dto = _mapper.Map<GetChatDto>(request);
-
-                var chatHistorys = await _chatService.GetChatHistoryAsync(dto);
+                var chatHistorys = await _chatService.GetChatHistoryAsync();
 
                 return _mapper.Map<List<GetChatHistoryVM>>(chatHistorys);
             },
-            verify: false,
-            parameter: request
+            verify: false
             );
         }
 

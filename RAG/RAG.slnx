@@ -1,3 +1,4 @@
-<Solution>
+﻿<Solution>
   <Project Path="RAG/RAG.csproj" />
+  <Project Path="RAG.Tests/RAG.Tests.csproj" />
 </Solution>

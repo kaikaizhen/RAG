@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Library.Http;
 using Newtonsoft.Json;
+using RAG.Authentication;
 using RAG.Commons.Options;
 using RAG.Models.Dtos.Chat;
 using RAG.Models.Dtos.RagServer;
@@ -18,22 +19,34 @@ namespace RAG.Services
         private readonly RagOption _ragOption;
         private readonly IChatRepo _chatRepo;
         private readonly IChatLogRepo _chatLogRepo;
+        private readonly ICurrentUserAccessor _currentUser;
 
         public ChatService(
             IMapper mapper,
             RagOption ragOption,
             IChatRepo chatRepo,
-            IChatLogRepo chatLogRepo
+            IChatLogRepo chatLogRepo,
+            ICurrentUserAccessor currentUser
         )
         {
             _mapper = mapper;
             _ragOption = ragOption;
             _chatRepo = chatRepo;
             _chatLogRepo = chatLogRepo;
+            _currentUser = currentUser;
         }
 
         public async Task<ChatReponseDto> SendChatAsync(ChatDto dto)
         {
+            var userId = _currentUser.UserId;
+
+            // 先驗證既有聊天室的擁有者，未通過前不呼叫 RAG Server
+            ChatHeader? existingChat = null;
+            if (!string.IsNullOrEmpty(dto.ChatID) && int.TryParse(dto.ChatID, out int chatId))
+            {
+                existingChat = await _chatRepo.GetByIdAsync(chatId, userId) ?? throw new HttpException(HttpStatusCode.NotFound, "ChatID Not Found");
+            }
+
             var sendContent = _mapper.Map<SendChatDto>(dto);
             var url = $"{_ragOption.BaseUrl}{_ragOption.AskUrl}";
             var httpClient = new HttpClient();
@@ -52,11 +65,11 @@ namespace RAG.Services
             if (chat is null) throw new Exception("Extension Error");
 
             ChatHeader chatEntity;
-            if (string.IsNullOrEmpty(dto.ChatID) || !int.TryParse(dto.ChatID, out int chatId))
+            if (existingChat is null)
             {
                 chatEntity = new ChatHeader()
                 {
-                    UserID = dto.UserID,
+                    UserID = userId,
                     Name = chat.Related.First(),
                     CreateAt = DateTime.Now
                 };
@@ -69,7 +82,7 @@ namespace RAG.Services
             }
             else
             {
-                chatEntity = await _chatRepo.GetByIdAsync(chatId) ?? throw new HttpException((HttpStatusCode)400,"ChatID Not Found");
+                chatEntity = existingChat;
 
                 chatEntity.UpdateAt = DateTime.Now;
                 chatEntity.ChatLog.Add(new ChatLog()
@@ -83,9 +96,9 @@ namespace RAG.Services
             return chat;
         }
 
-        public async Task<List<GetChatHistoryDto>> GetChatHistoryAsync(GetChatDto dto)
+        public async Task<List<GetChatHistoryDto>> GetChatHistoryAsync()
         {
-            var entities = await _chatRepo.GetByUserIdAsync(dto.UserID);
+            var entities = await _chatRepo.GetByUserIdAsync(_currentUser.UserId);
 
             var dtos = _mapper.Map<List<GetChatHistoryDto>>(entities);
 
@@ -96,7 +109,10 @@ namespace RAG.Services
         {
             if (!int.TryParse(Id, out var chatId)) throw new HttpException((HttpStatusCode)400, "ChatID Not Found");
 
-            var entities = await _chatLogRepo.GetAsync(chatId);
+            var userId = _currentUser.UserId;
+            _ = await _chatRepo.GetByIdAsync(chatId, userId) ?? throw new HttpException(HttpStatusCode.NotFound, "ChatID Not Found");
+
+            var entities = await _chatLogRepo.GetAsync(chatId, userId);
 
             var dtos = _mapper.Map<List<GetChatLogHistoryDto>>(entities);
 
@@ -107,21 +123,18 @@ namespace RAG.Services
         {
             if (!int.TryParse(Id, out var chatId)) throw new HttpException((HttpStatusCode)400, "ChatID Not Found");
 
+            var userId = _currentUser.UserId;
+            var chat = await _chatRepo.GetByIdAsync(chatId, userId) ?? throw new HttpException(HttpStatusCode.NotFound, "ChatID Not Found");
+
+            // 失敗時不 commit，交易隨 DbContext 釋放而 rollback，並將例外交由上層回應錯誤
             await _chatRepo.TransactionAsync();
-            try
-            {
-                var chat = await _chatRepo.GetByIdAsync(chatId);
-                var chatLogs = await _chatLogRepo.GetAsync(chatId);
 
-                if (chatLogs is not null) await _chatLogRepo.DeleteRangeAsync(chatLogs);
+            var chatLogs = await _chatLogRepo.GetAsync(chatId, userId);
+            if (chatLogs.Count > 0) await _chatLogRepo.DeleteRangeAsync(chatLogs);
 
-                if (chat is not null) await _chatRepo.DeleteAsync(chat);
+            await _chatRepo.DeleteAsync(chat);
 
-                await _chatRepo.CommitAsync();
-            }
-            catch (Exception ex) {
-                new HttpException((HttpStatusCode)500, ex.Message);
-            }
+            await _chatRepo.CommitAsync();
         }
     }
 }

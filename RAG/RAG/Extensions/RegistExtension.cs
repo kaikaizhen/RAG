@@ -1,5 +1,6 @@
 ﻿using Library.Extensions;
 using Microsoft.EntityFrameworkCore;
+using RAG.Authentication;
 using RAG.Commons.Options;
 using RAG.Models.Entities;
 using RAG.Repositories;
@@ -26,6 +27,7 @@ namespace RAG.Extensions
                             s.Description = "這是一個RAG 應用平台API說明檔案";
                         }
                     )
+                    .AddNativeJwtAuthentication(configuration)
                     .AddMapping()
                     .AddService()
                     .AddRepo();

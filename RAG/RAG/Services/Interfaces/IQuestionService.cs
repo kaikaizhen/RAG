@@ -6,13 +6,12 @@ namespace RAG.Services.Interfaces
     public interface IQuestionService
     {
         /// <summary>
-        /// 查詢問題列表
+        /// 查詢目前使用者的問題列表
         /// </summary>
-        /// <param name="userId"></param>
         /// <param name="Id"></param>
         /// <param name="type"></param>
         /// <returns></returns>
-        Task<List<GetQuestionDto>> GetAsync(int userId, int? Id, QuestionEnum type);
+        Task<List<GetQuestionDto>> GetAsync(int? Id, QuestionEnum type);
 
         /// <summary>
         /// 新增問題

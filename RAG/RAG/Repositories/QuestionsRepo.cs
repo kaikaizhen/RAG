@@ -28,10 +28,10 @@ namespace RAG.Repositories
             return await query.ToListAsync();
         }
 
-        public async Task<Questions?> GetByIdAsync(int Id)
+        public async Task<Questions?> GetByIdAsync(int Id, int userId)
         {
             var query = QueryAsync(
-               filter: q => q.ID == Id,
+               filter: q => q.ID == Id && q.UserID == userId,
                includes:q=>q.Include(x=>x.QaItemType.QaType)
             );
 

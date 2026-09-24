@@ -9,10 +9,10 @@ namespace RAG.Repositories
     {
         public ChatLogRepo(WenDaHubContext context) : base(context) { }
 
-        public async Task<List<ChatLog>> GetAsync(int Id)
+        public async Task<List<ChatLog>> GetAsync(int Id, int userId)
         {
             var query = QueryAsync(
-                filter:q=>q.ChatHeaderID == Id
+                filter:q=>q.ChatHeaderID == Id && q.ChatHeader.UserID == userId
             );
 
             return await query.ToListAsync();

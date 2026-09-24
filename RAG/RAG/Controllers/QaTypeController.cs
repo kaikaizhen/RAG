@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Library.Http.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Models.Dtos.QaType;
 using RAG.Models.Params.QaType;
@@ -10,6 +11,7 @@ namespace RAG.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     [Tags("問題種類功能模組")]
     public class QaTypeController : ControllerBase
     {

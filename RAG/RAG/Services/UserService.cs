@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Library.Http;
+using RAG.Authentication;
 using RAG.Commons.Options;
 using RAG.Models.Dtos.User;
 using RAG.Models.Entities;
@@ -16,23 +17,26 @@ namespace RAG.Services
 
         private readonly IUserCacheRepo _userCacheRepo;
         private readonly IQuestionsRepo _questionsRepo;
+        private readonly ICurrentUserAccessor _currentUser;
 
         public UserService(
             IMapper mapper,
             RagOption ragOption,
             IUserCacheRepo userCacheRepo,
-            IQuestionsRepo questionsRepo
+            IQuestionsRepo questionsRepo,
+            ICurrentUserAccessor currentUser
         )
         {
             _mapper = mapper;
             _ragOption = ragOption;
             _userCacheRepo = userCacheRepo;
             _questionsRepo = questionsRepo;
+            _currentUser = currentUser;
         }
 
         public async Task<GetUserDto> GetAsyc(int Id)
         {
-            var user = await _userCacheRepo.GetByIdAsync(Id) ?? throw new HttpException((HttpStatusCode)400,"查無使用者");
+            var user = await GetSelfAsync(Id);
 
             return _mapper.Map<GetUserDto>(user);
         }
@@ -48,16 +52,20 @@ namespace RAG.Services
 
         public async Task UpdateAsync(UpdateUserDto dto)
         {
-            var user = await _userCacheRepo.GetByIdAsync(dto.ID) ?? throw new HttpException((HttpStatusCode)400, "查無使用者");
+            var user = await GetSelfAsync(dto.ID);
 
             var entity = _mapper.Map<UserCache>(dto);
+
+            // 權限相關欄位由伺服器端保留，不接受使用者自行變更
+            entity.Manage = user.Manage;
+            entity.IsActive = user.IsActive;
 
             await _userCacheRepo.UpdateAsync(entity);
         }
 
         public async Task DeleteAsync(int Id)
         {
-            var user = await _userCacheRepo.GetByIdAsync(Id) ?? throw new HttpException((HttpStatusCode)400, "查無使用者");
+            var user = await GetSelfAsync(Id);
 
             await _userCacheRepo.TransactionAsync();
             try
@@ -83,5 +91,17 @@ namespace RAG.Services
                 throw;
             }
         }
+
+        #region Private Methods
+        /// <summary>
+        /// 僅允許存取本人帳號；非本人與不存在一律回 404，避免洩漏其他帳號是否存在
+        /// </summary>
+        private async Task<UserCache> GetSelfAsync(int Id)
+        {
+            if (Id != _currentUser.UserId) throw new HttpException(HttpStatusCode.NotFound, "查無使用者");
+
+            return await _userCacheRepo.GetByIdAsync(Id) ?? throw new HttpException(HttpStatusCode.NotFound, "查無使用者");
+        }
+        #endregion
     }
 }

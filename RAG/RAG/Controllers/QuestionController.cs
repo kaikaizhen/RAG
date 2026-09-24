@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Library.Http.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Models.Dtos.Question;
 using RAG.Models.Params.Question;
@@ -10,6 +11,7 @@ namespace RAG.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     [Tags("問題模組")]
     public class QuestionController : ControllerBase
     {
@@ -38,7 +40,7 @@ namespace RAG.Controllers
         {
             return await _apiExecutorHandler.RunAsync(async (request) =>
             {
-                var dtos = await _questionService.GetAsync(request.UserID, request.Id, request.Type);
+                var dtos = await _questionService.GetAsync(request.Id, request.Type);
                 var response = _mapper.Map<List<GetQuestionVM>>(dtos);
 
                 return response;

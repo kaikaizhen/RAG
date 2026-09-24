@@ -20,8 +20,14 @@ app.AddLibrary();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
 app.Run();
+
+/// <summary>
+/// 供整合測試 (WebApplicationFactory) 使用
+/// </summary>
+public partial class Program { }

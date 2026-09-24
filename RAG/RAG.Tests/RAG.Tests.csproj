@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.31" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.9" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <!-- 與 RAG API 實際解析的版本一致（EF Core 9 相依） -->
+    <PackageReference Include="System.Text.Json" Version="9.0.9" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RAG\RAG.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- Library 的 Swagger 設定以 entry assembly 名稱載入 XML 註解；測試時 entry assembly 為 testhost -->
+  <Target Name="CopyApiXmlDocForTesthost" AfterTargets="Build" Condition="Exists('$(OutDir)RAG.xml')">
+    <Copy SourceFiles="$(OutDir)RAG.xml" DestinationFiles="$(OutDir)testhost.xml" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

@@ -6,11 +6,12 @@ namespace RAG.Repositories.Interfaces
     public interface IChatRepo:IBaseRepo<WenDaHubContext,ChatHeader>
     {
         /// <summary>
-        /// 查詢聊天資訊
+        /// 查詢聊天資訊(僅限擁有者)
         /// </summary>
         /// <param name="Id"></param>
+        /// <param name="userId">擁有者使用者編號</param>
         /// <returns></returns>
-        Task<ChatHeader?> GetByIdAsync(int Id);
+        Task<ChatHeader?> GetByIdAsync(int Id, int userId);
 
         /// <summary>
         /// 查詢聊天清單(根據使用者編號)

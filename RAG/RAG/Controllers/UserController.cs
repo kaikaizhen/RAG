@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Library.Http.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Models.Dtos.User;
 using RAG.Models.Params.User;
@@ -10,6 +11,7 @@ namespace RAG.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     [Tags("使用者管理模組")]
     public class UserController : ControllerBase
     {

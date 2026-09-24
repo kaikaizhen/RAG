@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Library.Http.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Models.Dtos.Auth;
 using RAG.Models.Params.Auth;
@@ -34,6 +35,7 @@ namespace RAG.Controllers
         /// <param name="request"></param>
         /// <returns></returns>
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginParam request)
         {
             return await _apiExecutor.RunAsync(async (request) =>

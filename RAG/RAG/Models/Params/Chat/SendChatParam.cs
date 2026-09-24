@@ -16,10 +16,5 @@
         /// 聊天編號
         /// </summary>
         public string? ChatID {  get; set; }
-
-        /// <summary>
-        /// 使用者編號
-        /// </summary>
-        public required int UserID {  get; set; }
     }
 }

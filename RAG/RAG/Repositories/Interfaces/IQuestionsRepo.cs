@@ -21,11 +21,12 @@ namespace RAG.Repositories.Interfaces
         Task<List<Questions>> GetByTypeIdAsync(int userId, int Id);
 
         /// <summary>
-        /// 查詢問題
+        /// 查詢問題(僅限擁有者)
         /// </summary>
         /// <param name="Id"></param>
+        /// <param name="userId">擁有者使用者編號</param>
         /// <returns></returns>
-        Task<Questions?> GetByIdAsync(int Id);
+        Task<Questions?> GetByIdAsync(int Id, int userId);
 
         /// <summary>
         /// 新增問題

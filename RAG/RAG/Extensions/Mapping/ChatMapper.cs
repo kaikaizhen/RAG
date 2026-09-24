@@ -18,7 +18,6 @@ namespace RAG.Extensions.Mapping
             #endregion
 
             #region GetChat
-            CreateMap<GetChatParam, GetChatDto>();
             CreateMap<ChatHeader, GetChatHistoryDto>();
             CreateMap<GetChatHistoryDto, GetChatHistoryVM>();
             #endregion
