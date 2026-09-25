@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,8 +11,9 @@ namespace RAG.Controllers
     /// <summary>
     /// 只提供目前 Space 可見的 capability 清單；工具執行僅限伺服器端 Agent Runtime 經 IToolInvoker 呼叫
     /// </summary>
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
+    [ApiVersion("1.0")]
     [Authorize]
     [RequireSpaceContext]
     [Tags("Tool 功能模組")]

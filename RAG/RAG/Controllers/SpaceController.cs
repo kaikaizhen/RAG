@@ -1,15 +1,18 @@
+using Asp.Versioning;
 using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Authentication;
+using RAG.Models.ViewModels;
 using RAG.Models.ViewModels.Space;
 using RAG.SpaceRuntime;
 using RAG.Spaces;
 
 namespace RAG.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
+    [ApiVersion("1.0")]
     [Authorize]
     [Tags("Space 功能模組")]
     public class SpaceController : ControllerBase
@@ -37,6 +40,7 @@ namespace RAG.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
+        [ProducesResponseType(typeof(List<SpaceVM>), StatusCodes.Status200OK)]
         public async Task<IActionResult> Get()
         {
             return await _apiExecutorHandler.RunAsync(async () =>
@@ -58,6 +62,8 @@ namespace RAG.Controllers
         /// <returns></returns>
         [HttpGet("current")]
         [RequireSpaceContext]
+        [ProducesResponseType(typeof(CurrentSpaceVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status403Forbidden)]
         public IActionResult GetCurrent()
         {
             return _apiExecutorHandler.Run(() =>

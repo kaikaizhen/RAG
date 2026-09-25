@@ -41,8 +41,8 @@ namespace RAG.Tests.ToolRuntime
         [Fact]
         public async Task Capability_list_reflects_space_allow_list()
         {
-            var inDefault = await ClientFor(SeedData.UserA).GetFromJsonAsync<List<Capability>>("/api/Capability");
-            var inTeam2 = await ClientFor(SeedData.UserA, 2).GetFromJsonAsync<List<Capability>>("/api/Capability");
+            var inDefault = await ClientFor(SeedData.UserA).GetFromJsonAsync<List<Capability>>("/api/v1/Capability");
+            var inTeam2 = await ClientFor(SeedData.UserA, 2).GetFromJsonAsync<List<Capability>>("/api/v1/Capability");
 
             Assert.Equal(new[] { ("knowledge.search", "read") }, inDefault!.Select(c => (c.Id, c.Kind)));
             Assert.Empty(inTeam2!);
@@ -51,14 +51,14 @@ namespace RAG.Tests.ToolRuntime
         [Fact]
         public async Task Capability_list_requires_authentication_and_membership()
         {
-            Assert.Equal(HttpStatusCode.Unauthorized, (await _factory.CreateClientWithToken(null).GetAsync("/api/Capability")).StatusCode);
-            Assert.Equal(HttpStatusCode.Forbidden, (await ClientFor(SeedData.UserB, 2).GetAsync("/api/Capability")).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await _factory.CreateClientWithToken(null).GetAsync("/api/v1/Capability")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await ClientFor(SeedData.UserB, 2).GetAsync("/api/v1/Capability")).StatusCode);
         }
 
         [Fact]
         public async Task There_is_no_http_endpoint_to_invoke_tools()
         {
-            var response = await ClientFor(SeedData.UserA).PostAsJsonAsync("/api/Capability/knowledge.search/invoke", new { query = "x" });
+            var response = await ClientFor(SeedData.UserA).PostAsJsonAsync("/api/v1/Capability/knowledge.search/invoke", new { query = "x" });
 
             Assert.True(response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed);
         }

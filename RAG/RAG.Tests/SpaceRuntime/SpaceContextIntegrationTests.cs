@@ -24,7 +24,7 @@ namespace RAG.Tests.SpaceRuntime
         private const int SpaceDefaultKey = 105;
         private const int SpaceUnknownRole = 106;
 
-        private const string CurrentUrl = "/api/Space/current";
+        private const string CurrentUrl = "/api/v1/Space/current";
 
         private readonly RagApiFactory _factory;
 
@@ -99,7 +99,7 @@ namespace RAG.Tests.SpaceRuntime
         [Fact]
         public async Task Space_list_requires_authentication()
         {
-            var response = await _factory.CreateClientWithToken(null).GetAsync("/api/Space");
+            var response = await _factory.CreateClientWithToken(null).GetAsync("/api/v1/Space");
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -143,7 +143,7 @@ namespace RAG.Tests.SpaceRuntime
         [Fact]
         public async Task Space_list_contains_only_valid_memberships()
         {
-            var response = await ClientFor(SeedData.UserA).GetAsync("/api/Space");
+            var response = await ClientFor(SeedData.UserA).GetAsync("/api/v1/Space");
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var spaces = await response.Content.ReadFromJsonAsync<List<SpaceItem>>();
@@ -173,7 +173,7 @@ namespace RAG.Tests.SpaceRuntime
             Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(Get(CurrentUrl))).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(Get(CurrentUrl, ("X-Space-Id", SpaceDefaultKey.ToString())))).StatusCode);
 
-            var spaces = await client.GetFromJsonAsync<List<SpaceItem>>("/api/Space");
+            var spaces = await client.GetFromJsonAsync<List<SpaceItem>>("/api/v1/Space");
             Assert.Empty(spaces!);
         }
 
@@ -256,11 +256,11 @@ namespace RAG.Tests.SpaceRuntime
             var client = ClientFor(SeedData.UserB);
 
             // 帳號層級 API 不需要 SpaceContext
-            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/User/{SeedData.UserB}")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/v1/User/{SeedData.UserB}")).StatusCode);
 
             // Phase 3：Chat / Question 需要 SpaceContext，無 membership 一律 403
-            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/Chat")).StatusCode);
-            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/Question?Type=0")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/Chat")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/Question?Type=0")).StatusCode);
         }
 
         private sealed record CurrentSpace(int SpaceID, string Key, string Name, string Role, List<string> Permissions, string? RepositoryID, string? ProjectID);

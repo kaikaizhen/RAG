@@ -1,7 +1,9 @@
+using Asp.Versioning;
 using Library.Http;
 using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RAG.Models.ViewModels;
 using RAG.Models.ViewModels.Skill;
 using RAG.SkillRuntime;
 using RAG.SpaceRuntime;
@@ -10,8 +12,9 @@ using System.Net;
 
 namespace RAG.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
+    [ApiVersion("1.0")]
     [Authorize]
     [RequireSpaceContext]
     [Tags("Skill / Workflow 功能模組")]
@@ -37,6 +40,9 @@ namespace RAG.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("effective")]
+        [ProducesResponseType(typeof(EffectiveSkillVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status503ServiceUnavailable)]
         public IActionResult GetEffective()
         {
             return _apiExecutorHandler.Run(() =>

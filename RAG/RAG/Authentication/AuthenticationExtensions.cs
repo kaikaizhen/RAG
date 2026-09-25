@@ -20,6 +20,7 @@ namespace RAG.Authentication
             services.AddSingleton(jwtOptions);
             services.TryAddSingleton(TimeProvider.System);
             services.AddSingleton<IJwtTokenIssuer, JwtTokenIssuer>();
+            services.AddSingleton<IRefreshTokenValidator, RefreshTokenValidator>();
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 
@@ -30,20 +31,7 @@ namespace RAG.Authentication
                 .AddJwtBearer(options =>
                 {
                     options.MapInboundClaims = true;
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = jwtOptions.Issuer,
-                        ValidateAudience = true,
-                        ValidAudience = jwtOptions.Audience,
-                        ValidateLifetime = true,
-                        RequireExpirationTime = true,
-                        RequireSignedTokens = true,
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(jwtOptions.SigningKey),
-                        ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 },
-                        ClockSkew = TimeSpan.Zero
-                    };
+                    options.TokenValidationParameters = jwtOptions.CreateValidationParameters();
                     options.Events = new JwtBearerEvents
                     {
                         OnTokenValidated = context =>

@@ -29,7 +29,7 @@ namespace RAG.Tests.SkillRuntime
 
     public class SkillApiIntegrationTests : IClassFixture<SkillApiFactory>, IAsyncLifetime
     {
-        private const string Url = "/api/Skill/effective";
+        private const string Url = "/api/v1/Skill/effective";
         private readonly SkillApiFactory _factory;
 
         public SkillApiIntegrationTests(SkillApiFactory factory) => _factory = factory;

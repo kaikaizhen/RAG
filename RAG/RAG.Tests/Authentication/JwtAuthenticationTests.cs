@@ -23,27 +23,27 @@ namespace RAG.Tests.Authentication
 
         public static TheoryData<string, string> ProtectedEndpoints => new()
         {
-            { "GET", "/api/Chat" },
-            { "POST", "/api/Chat" },
-            { "POST", "/api/Chat/ChatStream" },
-            { "GET", $"/api/Chat/{SeedData.ChatA}" },
-            { "DELETE", $"/api/Chat/{SeedData.ChatA}" },
-            { "GET", "/api/Question?Type=0" },
-            { "POST", "/api/Question" },
-            { "PUT", "/api/Question" },
-            { "DELETE", $"/api/Question/{SeedData.QuestionA}" },
-            { "GET", $"/api/User/{SeedData.UserA}" },
-            { "POST", "/api/User" },
-            { "PUT", "/api/User" },
-            { "DELETE", $"/api/User/{SeedData.UserA}" },
-            { "GET", "/api/QaType" },
-            { "POST", "/api/QaType" },
-            { "PUT", "/api/QaType" },
-            { "DELETE", "/api/QaType/1" },
-            { "GET", "/api/QaTypeItem" },
-            { "POST", "/api/QaTypeItem" },
-            { "PUT", "/api/QaTypeItem" },
-            { "DELETE", "/api/QaTypeItem/1" },
+            { "GET", "/api/v1/Chat" },
+            { "POST", "/api/v1/Chat" },
+            { "POST", "/api/v1/Chat/ChatStream" },
+            { "GET", $"/api/v1/Chat/{SeedData.ChatA}" },
+            { "DELETE", $"/api/v1/Chat/{SeedData.ChatA}" },
+            { "GET", "/api/v1/Question?Type=0" },
+            { "POST", "/api/v1/Question" },
+            { "PUT", "/api/v1/Question" },
+            { "DELETE", $"/api/v1/Question/{SeedData.QuestionA}" },
+            { "GET", $"/api/v1/User/{SeedData.UserA}" },
+            { "POST", "/api/v1/User" },
+            { "PUT", "/api/v1/User" },
+            { "DELETE", $"/api/v1/User/{SeedData.UserA}" },
+            { "GET", "/api/v1/QaType" },
+            { "POST", "/api/v1/QaType" },
+            { "PUT", "/api/v1/QaType" },
+            { "DELETE", "/api/v1/QaType/1" },
+            { "GET", "/api/v1/QaTypeItem" },
+            { "POST", "/api/v1/QaTypeItem" },
+            { "PUT", "/api/v1/QaTypeItem" },
+            { "DELETE", "/api/v1/QaTypeItem/1" },
         };
 
         [Theory]
@@ -77,7 +77,7 @@ namespace RAG.Tests.Authentication
         [MemberData(nameof(InvalidTokens))]
         public async Task Malformed_or_badly_signed_token_returns_401(string _, string token)
         {
-            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/User/{SeedData.UserA}");
+            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/v1/User/{SeedData.UserA}");
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -87,7 +87,7 @@ namespace RAG.Tests.Authentication
         {
             var token = TestTokens.Create(_factory.SecretKey, issuer: "Attacker");
 
-            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/User/{SeedData.UserA}");
+            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/v1/User/{SeedData.UserA}");
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -97,7 +97,7 @@ namespace RAG.Tests.Authentication
         {
             var token = TestTokens.Create(_factory.SecretKey, audience: "OtherAudience");
 
-            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/User/{SeedData.UserA}");
+            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/v1/User/{SeedData.UserA}");
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -108,7 +108,7 @@ namespace RAG.Tests.Authentication
             var now = DateTime.UtcNow;
             var token = TestTokens.Create(_factory.SecretKey, notBefore: now.AddHours(-2), expires: now.AddSeconds(-5));
 
-            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/User/{SeedData.UserA}");
+            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/v1/User/{SeedData.UserA}");
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -122,7 +122,7 @@ namespace RAG.Tests.Authentication
         {
             var token = TestTokens.Create(_factory.SecretKey, subject: subject);
 
-            var response = await _factory.CreateClientWithToken(token).GetAsync("/api/Chat");
+            var response = await _factory.CreateClientWithToken(token).GetAsync("/api/v1/Chat");
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -134,7 +134,7 @@ namespace RAG.Tests.Authentication
         {
             var token = TestTokens.Create(_factory.SecretKey, tokenUse: tokenUse);
 
-            var response = await _factory.CreateClientWithToken(token).GetAsync("/api/Chat");
+            var response = await _factory.CreateClientWithToken(token).GetAsync("/api/v1/Chat");
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -144,7 +144,7 @@ namespace RAG.Tests.Authentication
         {
             var client = _factory.CreateClientWithToken("not-a-jwt");
 
-            var response = await client.DeleteAsync($"/api/Chat/{SeedData.ChatA}");
+            var response = await client.DeleteAsync($"/api/v1/Chat/{SeedData.ChatA}");
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
             Assert.True(await SeedData.ChatExistsAsync(_factory, SeedData.ChatA));
@@ -155,7 +155,7 @@ namespace RAG.Tests.Authentication
         {
             var token = TestTokens.Create(_factory.SecretKey, subject: SeedData.UserA.ToString());
 
-            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/User/{SeedData.UserA}");
+            var response = await _factory.CreateClientWithToken(token).GetAsync($"/api/v1/User/{SeedData.UserA}");
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var body = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
@@ -167,17 +167,17 @@ namespace RAG.Tests.Authentication
         {
             var anonymous = _factory.CreateClientWithToken(null);
 
-            var login = await anonymous.PostAsJsonAsync("/api/Auth/Login", new { Account = SeedData.UserAAccount, Password = SeedData.UserAPassword });
+            var login = await anonymous.PostAsJsonAsync("/api/v1/Auth/Login", new { Account = SeedData.UserAAccount, Password = SeedData.UserAPassword });
 
             Assert.Equal(HttpStatusCode.OK, login.StatusCode);
             var body = await login.Content.ReadFromJsonAsync<LoginBody>();
             Assert.Equal(SeedData.UserA, body!.UserID);
             Assert.False(string.IsNullOrEmpty(body.AccessToken));
 
-            var withAccess = await _factory.CreateClientWithToken(body.AccessToken).GetAsync($"/api/User/{SeedData.UserA}");
+            var withAccess = await _factory.CreateClientWithToken(body.AccessToken).GetAsync($"/api/v1/User/{SeedData.UserA}");
             Assert.Equal(HttpStatusCode.OK, withAccess.StatusCode);
 
-            var withRefresh = await _factory.CreateClientWithToken(body.RefreshToken).GetAsync($"/api/User/{SeedData.UserA}");
+            var withRefresh = await _factory.CreateClientWithToken(body.RefreshToken).GetAsync($"/api/v1/User/{SeedData.UserA}");
             Assert.Equal(HttpStatusCode.Unauthorized, withRefresh.StatusCode);
         }
 
@@ -185,7 +185,7 @@ namespace RAG.Tests.Authentication
         public async Task Login_with_wrong_password_returns_401()
         {
             var response = await _factory.CreateClientWithToken(null)
-                .PostAsJsonAsync("/api/Auth/Login", new { Account = SeedData.UserAAccount, Password = "wrong" });
+                .PostAsJsonAsync("/api/v1/Auth/Login", new { Account = SeedData.UserAAccount, Password = "wrong" });
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }

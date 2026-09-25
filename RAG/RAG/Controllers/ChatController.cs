@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using Asp.Versioning;
+using AutoMapper;
 using Library.Http;
 using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using RAG.Models.Dtos.Chat;
 using RAG.Models.Dtos.RagServer;
 using RAG.Models.Params.Chat;
+using RAG.Models.ViewModels;
 using RAG.Models.ViewModels.Chat;
 using RAG.Services.Interfaces;
 using RAG.Spaces;
@@ -13,8 +15,9 @@ using System;
 
 namespace RAG.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
+    [ApiVersion("1.0")]
     [Authorize]
     [RequireSpaceContext]
     [Tags("回應功能模組")]
@@ -42,6 +45,8 @@ namespace RAG.Controllers
         /// <param name="request"></param>
         /// <returns></returns>
         [HttpPost]
+        [ProducesResponseType(typeof(ChatVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Chat([FromBody] SendChatParam request)
         {
             return await _apiExecutorHandler.RunAsync(async (request) =>
@@ -89,6 +94,7 @@ namespace RAG.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
+        [ProducesResponseType(typeof(List<GetChatHistoryVM>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetChatHistory()
         {
             return await _apiExecutorHandler.RunAsync(async () =>
@@ -107,6 +113,8 @@ namespace RAG.Controllers
         /// <param name="chatId"></param>
         /// <returns></returns>
         [HttpGet("{chatId}")]
+        [ProducesResponseType(typeof(List<GetChatLogHistoryVM>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetChatLogHistory([FromRoute] string chatId)
         {
             return await _apiExecutorHandler.RunAsync(async (chatId) =>
@@ -121,6 +129,8 @@ namespace RAG.Controllers
         }
 
         [HttpDelete("{chatId}")]
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteChatHistory([FromRoute] string chatId)
         {
             return await _apiExecutorHandler.RunAsync(async (chatId) =>

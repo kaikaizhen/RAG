@@ -1,0 +1,1596 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "RAG 應用平台",
+    "description": "這是一個RAG 應用平台API說明檔案",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/v1/Chat": {
+      "post": {
+        "tags": [
+          "回應功能模組"
+        ],
+        "summary": "回應",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendChatParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendChatParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendChatParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatVM"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "回應功能模組"
+        ],
+        "summary": "查詢目前使用者的聊天室清單",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GetChatHistoryVM"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GetChatHistoryVM"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GetChatHistoryVM"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/Chat/ChatStream": {
+      "post": {
+        "tags": [
+          "回應功能模組"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendChatParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendChatParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendChatParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/Chat/{chatId}": {
+      "get": {
+        "tags": [
+          "回應功能模組"
+        ],
+        "summary": "查詢聊天室紀錄",
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GetChatLogHistoryVM"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GetChatLogHistoryVM"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GetChatLogHistoryVM"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "回應功能模組"
+        ],
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/User/{Id}": {
+      "get": {
+        "tags": [
+          "使用者管理模組"
+        ],
+        "summary": "查詢使用者資訊",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "使用者管理模組"
+        ],
+        "summary": "刪除使用者",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/User": {
+      "post": {
+        "tags": [
+          "使用者管理模組"
+        ],
+        "summary": "新增使用者",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "使用者管理模組"
+        ],
+        "summary": "更新使用者",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/QaType": {
+      "get": {
+        "tags": [
+          "問題種類功能模組"
+        ],
+        "summary": "查詢問題種類列表(狀態為啟用)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "問題種類功能模組"
+        ],
+        "summary": "新增問題種類",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQaTypeParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQaTypeParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQaTypeParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "問題種類功能模組"
+        ],
+        "summary": "更新問題種類",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQaTypeParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQaTypeParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQaTypeParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/QaType/{Id}": {
+      "delete": {
+        "tags": [
+          "問題種類功能模組"
+        ],
+        "summary": "刪除問題種類",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/QaTypeItem": {
+      "get": {
+        "tags": [
+          "問題種類細項功能模組"
+        ],
+        "summary": "查詢問題種類細項列表(狀態為啟用)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "問題種類細項功能模組"
+        ],
+        "summary": "新增問題種類細項",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQaTypeItemParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQaTypeItemParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQaTypeItemParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "問題種類細項功能模組"
+        ],
+        "summary": "更新問題種類細項",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQaTypeItemParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQaTypeItemParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQaTypeItemParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/QaTypeItem/{Id}": {
+      "delete": {
+        "tags": [
+          "問題種類細項功能模組"
+        ],
+        "summary": "刪除問題種類細項",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/Question": {
+      "get": {
+        "tags": [
+          "問題模組"
+        ],
+        "summary": "查詢問題列表",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "query",
+            "description": "種類編號",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Type",
+            "in": "query",
+            "description": "查詢種類",
+            "schema": {
+              "$ref": "#/components/schemas/QuestionEnum"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "問題模組"
+        ],
+        "summary": "新增問題",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuestionParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuestionParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuestionParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "問題模組"
+        ],
+        "summary": "更新問題",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/Question/{Id}": {
+      "delete": {
+        "tags": [
+          "問題模組"
+        ],
+        "summary": "刪除問題",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/Auth/Login": {
+      "post": {
+        "tags": [
+          "驗證功能模組"
+        ],
+        "summary": "登入",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginVM"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/Auth/Refresh": {
+      "post": {
+        "tags": [
+          "驗證功能模組"
+        ],
+        "summary": "以 RefreshToken 換發新的 AccessToken / RefreshToken",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginVM"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/Skill/effective": {
+      "get": {
+        "tags": [
+          "Skill / Workflow 功能模組"
+        ],
+        "summary": "查詢目前 Space 的有效 Skill / Workflow（僅 metadata，不含內容）",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveSkillVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveSkillVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveSkillVM"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/Space": {
+      "get": {
+        "tags": [
+          "Space 功能模組"
+        ],
+        "summary": "查詢目前使用者可使用的 Space 清單",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SpaceVM"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SpaceVM"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SpaceVM"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/Space/current": {
+      "get": {
+        "tags": [
+          "Space 功能模組"
+        ],
+        "summary": "解析目前 request 的 Space（以 X-Space-Id header 作為選擇提示）",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentSpaceVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentSpaceVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentSpaceVM"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/Capability": {
+      "get": {
+        "tags": [
+          "Tool 功能模組"
+        ],
+        "summary": "查詢目前 Space 可使用的 capability",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArtifactVM": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "識別字",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "description": "版本",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "名稱",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "description": "來源：default 或 space:<key>",
+            "nullable": true
+          },
+          "tokenEstimate": {
+            "type": "integer",
+            "description": "預估 token 數",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatVM": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "description": "模型產生的最終回答",
+            "nullable": true
+          },
+          "related": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "相關問題（模型檢索出的類似問題）",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateQaTypeItemParam": {
+        "required": [
+          "qaTypeID"
+        ],
+        "type": "object",
+        "properties": {
+          "qaTypeID": {
+            "type": "integer",
+            "description": "問題種類編號",
+            "format": "int32"
+          },
+          "nameZh": {
+            "type": "string",
+            "description": "問題種類細項名稱(中文)",
+            "nullable": true
+          },
+          "nameEn": {
+            "type": "string",
+            "description": "問題種類細項名稱(英文)",
+            "nullable": true
+          },
+          "nameOther": {
+            "type": "string",
+            "description": "問題種類細項名稱(其他語系)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateQaTypeParam": {
+        "type": "object",
+        "properties": {
+          "nameZh": {
+            "type": "string",
+            "description": "問題種類名稱(中文)",
+            "nullable": true
+          },
+          "nameEn": {
+            "type": "string",
+            "description": "問題種類名稱(英文)",
+            "nullable": true
+          },
+          "nameOther": {
+            "type": "string",
+            "description": "問題種類名稱(其他語系)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateQuestionParam": {
+        "required": [
+          "answer",
+          "qaItemTypeID",
+          "question"
+        ],
+        "type": "object",
+        "properties": {
+          "qaItemTypeID": {
+            "type": "integer",
+            "description": "問題種類細項編號",
+            "format": "int32"
+          },
+          "question": {
+            "type": "string",
+            "description": "問題",
+            "nullable": true
+          },
+          "answer": {
+            "type": "string",
+            "description": "解答",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateUserParam": {
+        "required": [
+          "account",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "string",
+            "description": "帳號",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "description": "密碼",
+            "nullable": true
+          },
+          "nameZh": {
+            "type": "string",
+            "description": "名稱(中文)",
+            "nullable": true
+          },
+          "nameEn": {
+            "type": "string",
+            "description": "名稱(英文)",
+            "nullable": true
+          },
+          "nameOther": {
+            "type": "string",
+            "description": "名稱(其他語系)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CurrentSpaceVM": {
+        "type": "object",
+        "properties": {
+          "spaceID": {
+            "type": "integer",
+            "description": "Space 編號",
+            "format": "int32"
+          },
+          "key": {
+            "type": "string",
+            "description": "Space 識別字",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Space 名稱",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "description": "角色",
+            "nullable": true
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "權限",
+            "nullable": true
+          },
+          "repositoryID": {
+            "type": "string",
+            "description": "Repository（未選定為 null）",
+            "nullable": true
+          },
+          "projectID": {
+            "type": "string",
+            "description": "Project（未選定為 null）",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EffectiveSkillVM": {
+        "type": "object",
+        "properties": {
+          "spaceKey": {
+            "type": "string",
+            "description": "Space 識別字",
+            "nullable": true
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArtifactVM"
+            },
+            "description": "有效 Skill（依載入順序：Default 在前、Space 擴充在後）",
+            "nullable": true
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/ArtifactVM"
+          },
+          "tokenEstimate": {
+            "type": "integer",
+            "description": "預估 token 數",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErrorVM": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "錯誤訊息",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "統一錯誤回應（401 / 403 / 404 / 409 / 5xx）"
+      },
+      "GetChatHistoryVM": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "聊天室編號",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "聊天室名稱",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetChatLogHistoryVM": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "type": "string",
+            "description": "問題",
+            "nullable": true
+          },
+          "answer": {
+            "type": "string",
+            "description": "回答",
+            "nullable": true
+          },
+          "createAt": {
+            "type": "string",
+            "description": "創建時間",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginParam": {
+        "required": [
+          "account",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "string",
+            "description": "帳號",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "description": "密碼",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginVM": {
+        "type": "object",
+        "properties": {
+          "userID": {
+            "type": "integer",
+            "description": "使用者編號",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "名稱",
+            "nullable": true
+          },
+          "accessToken": {
+            "type": "string",
+            "description": "短期Token",
+            "nullable": true
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "長期Token",
+            "nullable": true
+          },
+          "manage": {
+            "type": "string",
+            "description": "是否有管理權限",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "QuestionEnum": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "RefreshParam": {
+        "required": [
+          "refreshToken"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "登入時取得的 RefreshToken",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SendChatParam": {
+        "required": [
+          "question"
+        ],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "問題描述",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "description": "搜尋範圍",
+            "nullable": true
+          },
+          "chatID": {
+            "type": "string",
+            "description": "聊天編號",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SpaceVM": {
+        "type": "object",
+        "properties": {
+          "spaceID": {
+            "type": "integer",
+            "description": "Space 編號",
+            "format": "int32"
+          },
+          "key": {
+            "type": "string",
+            "description": "Space 識別字",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Space 名稱",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "description": "角色",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "是否為預設 Space"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateQaTypeItemParam": {
+        "required": [
+          "id",
+          "qaTypeID"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "問題種類細項編號",
+            "format": "int32"
+          },
+          "qaTypeID": {
+            "type": "integer",
+            "description": "問題種類編號",
+            "format": "int32"
+          },
+          "nameZh": {
+            "type": "string",
+            "description": "問題種類細項名稱(中文)",
+            "nullable": true
+          },
+          "nameEn": {
+            "type": "string",
+            "description": "問題種類細項名稱(英文)",
+            "nullable": true
+          },
+          "nameOther": {
+            "type": "string",
+            "description": "問題種類細項名稱(其他語系)",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "啟用狀態"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateQaTypeParam": {
+        "required": [
+          "id",
+          "isActive"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "問題種類編號",
+            "format": "int32"
+          },
+          "nameZh": {
+            "type": "string",
+            "description": "問題種類名稱(中文)",
+            "nullable": true
+          },
+          "nameEn": {
+            "type": "string",
+            "description": "問題種類名稱(英文)",
+            "nullable": true
+          },
+          "nameOther": {
+            "type": "string",
+            "description": "問題種類名稱(其他語系)",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "啟用狀態"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateQuestionParam": {
+        "required": [
+          "answer",
+          "id",
+          "qaItemTypeID",
+          "question"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "問題編號",
+            "format": "int32"
+          },
+          "qaItemTypeID": {
+            "type": "integer",
+            "description": "問題種類細項編號",
+            "format": "int32"
+          },
+          "question": {
+            "type": "string",
+            "description": "問題",
+            "nullable": true
+          },
+          "answer": {
+            "type": "string",
+            "description": "解答",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateUserParam": {
+        "required": [
+          "account",
+          "id",
+          "manage",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "使用者唯一值",
+            "format": "int32"
+          },
+          "account": {
+            "type": "string",
+            "description": "帳號",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "description": "密碼",
+            "nullable": true
+          },
+          "nameZh": {
+            "type": "string",
+            "description": "名稱(中文)",
+            "nullable": true
+          },
+          "nameEn": {
+            "type": "string",
+            "description": "名稱(英文)",
+            "nullable": true
+          },
+          "nameOther": {
+            "type": "string",
+            "description": "名稱(其他語系)",
+            "nullable": true
+          },
+          "manage": {
+            "type": "string",
+            "description": "管理層級",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "帳號啟用狀態"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "輸入登入取得的 AccessToken",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "Bearer": []
+    }
+  ]
+}

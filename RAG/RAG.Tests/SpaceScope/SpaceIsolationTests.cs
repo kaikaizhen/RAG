@@ -61,7 +61,7 @@ namespace RAG.Tests.SpaceScope
         [InlineData(Space2, QuestionA_Space2)]
         public async Task Question_list_only_contains_current_space(int spaceId, int expectedQuestion)
         {
-            var questions = await ClientFor(SeedData.UserA, spaceId).GetFromJsonAsync<List<QuestionItem>>("/api/Question?Type=0");
+            var questions = await ClientFor(SeedData.UserA, spaceId).GetFromJsonAsync<List<QuestionItem>>("/api/v1/Question?Type=0");
 
             Assert.Equal(new[] { expectedQuestion }, questions!.Select(q => q.ID));
         }
@@ -71,7 +71,7 @@ namespace RAG.Tests.SpaceScope
         [InlineData(Space2, ChatA_Space2)]
         public async Task Chat_history_only_contains_current_space(int spaceId, int expectedChat)
         {
-            var chats = await ClientFor(SeedData.UserA, spaceId).GetFromJsonAsync<List<ChatItem>>("/api/Chat");
+            var chats = await ClientFor(SeedData.UserA, spaceId).GetFromJsonAsync<List<ChatItem>>("/api/v1/Chat");
 
             Assert.Equal(new[] { expectedChat.ToString() }, chats!.Select(c => c.ID));
         }
@@ -81,7 +81,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Cannot_read_chat_log_of_other_space()
         {
-            var response = await ClientFor(SeedData.UserA, Space2).GetAsync($"/api/Chat/{SeedData.ChatA}");
+            var response = await ClientFor(SeedData.UserA, Space2).GetAsync($"/api/v1/Chat/{SeedData.ChatA}");
 
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
@@ -89,7 +89,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Cannot_delete_chat_of_other_space()
         {
-            var response = await ClientFor(SeedData.UserA, Space2).DeleteAsync($"/api/Chat/{SeedData.ChatA}");
+            var response = await ClientFor(SeedData.UserA, Space2).DeleteAsync($"/api/v1/Chat/{SeedData.ChatA}");
 
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
             Assert.True(await SeedData.ChatExistsAsync(_factory, SeedData.ChatA));
@@ -98,7 +98,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Cannot_append_to_chat_of_other_space_and_rag_is_not_called()
         {
-            var response = await ClientFor(SeedData.UserA, Space2).PostAsJsonAsync("/api/Chat", new { Question = "q", ChatID = SeedData.ChatA.ToString() });
+            var response = await ClientFor(SeedData.UserA, Space2).PostAsJsonAsync("/api/v1/Chat", new { Question = "q", ChatID = SeedData.ChatA.ToString() });
 
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
             Assert.Empty(Calls);
@@ -108,7 +108,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Cannot_update_question_of_other_space()
         {
-            var response = await ClientFor(SeedData.UserA, Space2).PutAsJsonAsync("/api/Question", new
+            var response = await ClientFor(SeedData.UserA, Space2).PutAsJsonAsync("/api/v1/Question", new
             {
                 ID = SeedData.QuestionA, QaItemTypeID = SeedData.QaItemType, Question = "hacked", Answer = "hacked"
             });
@@ -121,7 +121,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Cannot_delete_question_of_other_space()
         {
-            var response = await ClientFor(SeedData.UserA, Space2).DeleteAsync($"/api/Question/{SeedData.QuestionA}");
+            var response = await ClientFor(SeedData.UserA, Space2).DeleteAsync($"/api/v1/Question/{SeedData.QuestionA}");
 
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
             Assert.Empty(Calls);
@@ -133,7 +133,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Ask_uses_resolved_space_and_ignores_body_space_id()
         {
-            var response = await ClientFor(SeedData.UserA, Space2).PostAsJsonAsync("/api/Chat", new { Question = "hello", space_id = Space1, SpaceId = Space1 });
+            var response = await ClientFor(SeedData.UserA, Space2).PostAsJsonAsync("/api/v1/Chat", new { Question = "hello", space_id = Space1, SpaceId = Space1 });
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var call = Assert.Single(Calls);
@@ -147,7 +147,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Create_question_is_stored_and_vectorized_in_resolved_space_only()
         {
-            var response = await ClientFor(SeedData.UserA, Space2).PostAsJsonAsync("/api/Question", new
+            var response = await ClientFor(SeedData.UserA, Space2).PostAsJsonAsync("/api/v1/Question", new
             {
                 QaItemTypeID = SeedData.QaItemType, Question = "new-q", Answer = "new-a", SpaceID = Space1, space_id = Space1
             });
@@ -165,7 +165,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Update_revectorizes_new_content_into_same_point_and_space()
         {
-            var response = await ClientFor(SeedData.UserA, Space2).PutAsJsonAsync("/api/Question", new
+            var response = await ClientFor(SeedData.UserA, Space2).PutAsJsonAsync("/api/v1/Question", new
             {
                 ID = QuestionA_Space2, QaItemTypeID = SeedData.QaItemType, Question = "updated-q", Answer = "updated-a"
             });
@@ -183,7 +183,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Delete_question_removes_vector_in_its_space_then_row()
         {
-            var response = await ClientFor(SeedData.UserA, Space2).DeleteAsync($"/api/Question/{QuestionA_Space2}");
+            var response = await ClientFor(SeedData.UserA, Space2).DeleteAsync($"/api/v1/Question/{QuestionA_Space2}");
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var call = Assert.Single(Calls);
@@ -198,11 +198,11 @@ namespace RAG.Tests.SpaceScope
         {
             var client = ClientFor(UserViewer);
 
-            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/Question?Type=0")).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/Chat", new { Question = "hello" })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/Question?Type=0")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/Chat", new { Question = "hello" })).StatusCode);
             _factory.RagGateway.Reset();
 
-            var create = await client.PostAsJsonAsync("/api/Question", new { QaItemTypeID = SeedData.QaItemType, Question = "q", Answer = "a" });
+            var create = await client.PostAsJsonAsync("/api/v1/Question", new { QaItemTypeID = SeedData.QaItemType, Question = "q", Answer = "a" });
 
             Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);
             Assert.Empty(Calls);
@@ -216,7 +216,7 @@ namespace RAG.Tests.SpaceScope
         {
             _factory.RagGateway.FailUpsert = true;
 
-            var response = await ClientFor(SeedData.UserA, Space1).PostAsJsonAsync("/api/Question", new { QaItemTypeID = SeedData.QaItemType, Question = "will-fail", Answer = "a" });
+            var response = await ClientFor(SeedData.UserA, Space1).PostAsJsonAsync("/api/v1/Question", new { QaItemTypeID = SeedData.QaItemType, Question = "will-fail", Answer = "a" });
 
             Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
             Assert.False(await _factory.WithDbAsync(db => db.Questions.AnyAsync(q => q.Question == "will-fail")));
@@ -228,12 +228,12 @@ namespace RAG.Tests.SpaceScope
             _factory.RagGateway.FailDelete = true;
             var client = ClientFor(SeedData.UserA, Space1);
 
-            var failed = await client.DeleteAsync($"/api/Question/{SeedData.QuestionA}");
+            var failed = await client.DeleteAsync($"/api/v1/Question/{SeedData.QuestionA}");
             Assert.Equal(HttpStatusCode.InternalServerError, failed.StatusCode);
             Assert.NotNull(await SeedData.GetQuestionAsync(_factory, SeedData.QuestionA));
 
             _factory.RagGateway.FailDelete = false;
-            var retried = await client.DeleteAsync($"/api/Question/{SeedData.QuestionA}");
+            var retried = await client.DeleteAsync($"/api/v1/Question/{SeedData.QuestionA}");
             Assert.Equal(HttpStatusCode.OK, retried.StatusCode);
             Assert.Null(await SeedData.GetQuestionAsync(_factory, SeedData.QuestionA));
         }
@@ -245,8 +245,8 @@ namespace RAG.Tests.SpaceScope
         {
             var client = ClientFor(SeedData.UserA);
 
-            Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync("/api/QaType/1")).StatusCode);
-            Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/QaTypeItem/{SeedData.QaItemType}")).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync("/api/v1/QaType/1")).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/v1/QaTypeItem/{SeedData.QaItemType}")).StatusCode);
 
             Assert.Empty(Calls);
             Assert.Equal(3, await _factory.WithDbAsync(db => db.Questions.CountAsync()));
@@ -262,7 +262,7 @@ namespace RAG.Tests.SpaceScope
                 await db.SaveChangesAsync();
             });
 
-            var response = await ClientFor(SeedData.UserA).DeleteAsync("/api/QaTypeItem/9");
+            var response = await ClientFor(SeedData.UserA).DeleteAsync("/api/v1/QaTypeItem/9");
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Empty(Calls);
@@ -273,7 +273,7 @@ namespace RAG.Tests.SpaceScope
         [Fact]
         public async Task Deleting_self_removes_vectors_with_each_records_own_space()
         {
-            var response = await ClientFor(SeedData.UserA).DeleteAsync($"/api/User/{SeedData.UserA}");
+            var response = await ClientFor(SeedData.UserA).DeleteAsync($"/api/v1/User/{SeedData.UserA}");
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var deletes = Calls.Where(c => c.Operation == "delete").Select(c => (VectorId: c.VectorId!, c.SpaceId)).OrderBy(x => x.VectorId).ToList();

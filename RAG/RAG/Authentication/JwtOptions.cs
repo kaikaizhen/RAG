@@ -38,6 +38,24 @@ namespace RAG.Authentication
         public required byte[] SigningKey { get; init; }
 
         /// <summary>
+        /// access token（JwtBearer）與 refresh token 共用的驗證規則
+        /// </summary>
+        public Microsoft.IdentityModel.Tokens.TokenValidationParameters CreateValidationParameters() => new()
+        {
+            ValidateIssuer = true,
+            ValidIssuer = Issuer,
+            ValidateAudience = true,
+            ValidAudience = Audience,
+            ValidateLifetime = true,
+            RequireExpirationTime = true,
+            RequireSignedTokens = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(SigningKey),
+            ValidAlgorithms = new[] { Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256 },
+            ClockSkew = TimeSpan.Zero
+        };
+
+        /// <summary>
         /// 啟動時讀取 JWT 設定；secret 僅從 encryption_config.json 讀取，缺少或無效即 fail-fast，
         /// 絕不自動產生或覆寫 secret。
         /// </summary>
