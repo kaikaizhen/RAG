@@ -1,5 +1,6 @@
 ﻿<Solution>
   <Project Path="RAG/RAG.csproj" />
   <Project Path="RAG.SpaceRuntime/RAG.SpaceRuntime.csproj" />
+  <Project Path="RAG.SkillRuntime/RAG.SkillRuntime.csproj" />
   <Project Path="RAG.Tests/RAG.Tests.csproj" />
 </Solution>
