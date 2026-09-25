@@ -1,6 +1,7 @@
 using Library.Extensions;
 using Microsoft.EntityFrameworkCore;
 using RAG.Extensions;
+using RAG.Spaces;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,7 @@ app.UseSwaggerUI();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseSpaceContext();
 
 app.MapControllers();
 

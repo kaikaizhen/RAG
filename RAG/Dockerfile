@@ -33,6 +33,7 @@ RUN echo "🔍 Checking private NuGet feed connectivity..." && \
 
 
 COPY ["RAG/RAG.csproj", "RAG/"]
+COPY ["RAG.SpaceRuntime/RAG.SpaceRuntime.csproj", "RAG.SpaceRuntime/"]
 RUN dotnet restore "./RAG/RAG.csproj"
 COPY . .
 WORKDIR "/src/RAG"
