@@ -1,48 +1,59 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Library.Http;
-using Newtonsoft.Json;
-using RAG.Authentication;
 using RAG.Commons.Enums;
-using RAG.Commons.Options;
 using RAG.Models.Dtos.Question;
 using RAG.Models.Dtos.RagServer;
 using RAG.Models.Entities;
+using RAG.Rag;
 using RAG.Repositories.Interfaces;
 using RAG.Services.Interfaces;
+using RAG.SpaceRuntime;
 using System.Net;
-using System.Text;
 
 namespace RAG.Services
 {
+    /// <summary>
+    /// MySQL 與 Qdrant 不是跨系統 ACID：
+    /// 新增 → MySQL（交易內）→ Qdrant → 回寫 VectorID → commit；任一步失敗即補償刪除已建立的向量與資料列。
+    /// 更新 → 覆寫同一個 point → 更新 MySQL；MySQL 失敗時重送更新即可收斂。
+    /// 刪除 → 先刪 Qdrant（不存在視為成功）→ 再刪 MySQL；中斷後可安全重試。
+    /// </summary>
     public class QuestionService : IQuestionService
     {
         private readonly IMapper _mapper;
-        private readonly RagOption _ragOption;
         private readonly IQuestionsRepo _questionsRepo;
-        private readonly ICurrentUserAccessor _currentUser;
+        private readonly IQaTypeItemRepo _qaTypeItemRepo;
+        private readonly ISpaceContextAccessor _spaceContext;
+        private readonly IRagScopeFactory _ragScopeFactory;
+        private readonly IRagGateway _ragGateway;
+        private readonly ILogger<QuestionService> _logger;
 
         public QuestionService(
             IMapper mapper,
-            RagOption ragOption,
             IQuestionsRepo questionsRepo,
-            ICurrentUserAccessor currentUser
+            IQaTypeItemRepo qaTypeItemRepo,
+            ISpaceContextAccessor spaceContext,
+            IRagScopeFactory ragScopeFactory,
+            IRagGateway ragGateway,
+            ILogger<QuestionService> logger
         )
         {
             _mapper = mapper;
-            _ragOption = ragOption;
             _questionsRepo = questionsRepo;
-            _currentUser = currentUser;
+            _qaTypeItemRepo = qaTypeItemRepo;
+            _spaceContext = spaceContext;
+            _ragScopeFactory = ragScopeFactory;
+            _ragGateway = ragGateway;
+            _logger = logger;
         }
-
-
 
         public async Task<List<GetQuestionDto>> GetAsync(int? Id, QuestionEnum type)
         {
-            var userId = _currentUser.UserId;
+            var space = RequirePermission(SpacePermissions.KnowledgeRead).Space;
             var entitys = type switch
             {
-                QuestionEnum.All => await GetByAllAsync(userId),
-                QuestionEnum.Type => await GetByTypeAsync(userId, Id),
+                QuestionEnum.All => await _questionsRepo.Get(space.UserId, space.SpaceId),
+                QuestionEnum.Type => await GetByTypeAsync(space, Id),
                 _ => throw new HttpException((HttpStatusCode)400,"不支援查詢類型")
             };
 
@@ -51,98 +62,104 @@ namespace RAG.Services
 
         public async Task CreateAsync(CreateQuestionDto dto)
         {
+            var context = RequirePermission(SpacePermissions.KnowledgeWrite);
+            var qaTypeId = await GetQaTypeIdAsync(dto.QaItemTypeID);
+            var scope = _ragScopeFactory.Create(context);
+
             var entity = _mapper.Map<Questions>(dto);
-            entity.UserID = _currentUser.UserId;
+            entity.UserID = context.Space.UserId;
+            entity.SpaceID = context.Space.SpaceId;
+
             await _questionsRepo.TransactionAsync();
+            await _questionsRepo.AddAsync(entity);
+
+            string? vectorId = null;
             try
             {
-                await _questionsRepo.AddAsync(entity);
-                await SendRagToVectorAsync(entity);
-
+                vectorId = await _ragGateway.UpsertQuestionAsync(scope, ToVectorRequest(entity, qaTypeId, referenceId: null));
+                entity.VectorID = vectorId;
+                await _questionsRepo.UpdateAsync(entity);
                 await _questionsRepo.CommitAsync();
             }
             catch
             {
+                if (vectorId is not null) await TryCompensateAsync(() => _ragGateway.DeleteQuestionAsync(scope, vectorId), "delete orphan vector");
+                await TryCompensateAsync(() => _questionsRepo.DeleteAsync(entity), "remove uncommitted question");
                 throw;
             }
         }
 
         public async Task UpdateAsync(UpdateQuestionDto dto)
         {
-            var question = await _questionsRepo.GetByIdAsync(dto.ID, _currentUser.UserId) ?? throw new HttpException(HttpStatusCode.NotFound,"查無問題");
+            var context = RequirePermission(SpacePermissions.KnowledgeWrite);
+            var question = await _questionsRepo.GetByIdAsync(dto.ID, context.Space.UserId, context.Space.SpaceId) ?? throw new HttpException(HttpStatusCode.NotFound,"查無問題");
+            var qaTypeId = await GetQaTypeIdAsync(dto.QaItemTypeID);
+
             var entity = _mapper.Map<Questions>(dto);
             entity.UserID = question.UserID;
+            entity.SpaceID = question.SpaceID;
             entity.CreateAt = question.CreateAt;
-            await SendRagToVectorAsync(entity);
+
+            // 以新內容覆寫同一個 point（原實作誤用舊內容向量化）
+            entity.VectorID = await _ragGateway.UpsertQuestionAsync(_ragScopeFactory.Create(context), ToVectorRequest(entity, qaTypeId, question.VectorID));
+            await _questionsRepo.UpdateAsync(entity);
         }
 
         public async Task DeleteAsync(int Id)
         {
-            var question = await _questionsRepo.GetByIdAsync(Id, _currentUser.UserId) ?? throw new HttpException(HttpStatusCode.NotFound,"查無問題");
+            var context = RequirePermission(SpacePermissions.KnowledgeWrite);
+            var question = await _questionsRepo.GetByIdAsync(Id, context.Space.UserId, context.Space.SpaceId) ?? throw new HttpException(HttpStatusCode.NotFound,"查無問題");
 
-            await _questionsRepo.TransactionAsync();
-            try
+            if (!string.IsNullOrEmpty(question.VectorID))
             {
-                await _questionsRepo.DeleteAsync(question);
+                await _ragGateway.DeleteQuestionAsync(_ragScopeFactory.Create(context), question.VectorID);
+            }
 
-                var url = $"{_ragOption.BaseUrl}{_ragOption.DeleteUrl}{question.VectorID}";
-                var httpClient = new HttpClient();
-                var response = await httpClient.DeleteAsync(url);
-                if (!response.IsSuccessStatusCode) throw new HttpException((HttpStatusCode)500, "DeleteToVector API Error");
-                await _questionsRepo.CommitAsync();
-            }
-            catch
-            {
-                throw;
-            }
+            await _questionsRepo.DeleteAsync(question);
         }
 
         #region Private Methods
-        private async Task<List<Questions>> GetByAllAsync(int userId)
+        private SpaceExecutionContext RequirePermission(string permission)
         {
-            return await _questionsRepo.Get(userId);
+            var context = _spaceContext.Current;
+            if (!context.Space.HasPermission(permission)) throw new HttpException(HttpStatusCode.Forbidden, "Forbidden");
+            return context;
         }
 
-        private async Task<List<Questions>> GetByTypeAsync(int userId, int? Id)
+        private async Task<List<Questions>> GetByTypeAsync(SpaceContext space, int? Id)
         {
             if (Id is not int typeId) throw new HttpException((HttpStatusCode)400,"使用種類查詢功能，請帶入Id");
 
-            return await _questionsRepo.GetByTypeIdAsync(userId, typeId);
+            return await _questionsRepo.GetByTypeIdAsync(space.UserId, space.SpaceId, typeId);
         }
 
-        private async Task SendRagToVectorAsync(Questions entity)
+        private async Task<int> GetQaTypeIdAsync(int qaItemTypeId)
         {
-            var question = await _questionsRepo.GetByIdAsync(entity.ID, entity.UserID) ?? throw new HttpException(HttpStatusCode.NotFound, "查無問題");
+            var item = await _qaTypeItemRepo.GetByIdAsync(qaItemTypeId) ?? throw new HttpException(HttpStatusCode.BadRequest, "查無此問題種類細項");
+            return item.QaTypeID;
+        }
 
-            var httpClient = new HttpClient();
-            var url = $"{_ragOption.BaseUrl}{_ragOption.ToVectorUrl}";
-            var content = new ToVectorDto()
+        private static ToVectorDto.QuestionRequest ToVectorRequest(Questions entity, int qaTypeId, string? referenceId) => new()
+        {
+            Id = entity.ID,
+            ReferenceID = referenceId,
+            QaTypeId = qaTypeId,
+            QaItemTypeId = entity.QaItemTypeID,
+            Question = entity.Question ?? string.Empty,
+            Answer = entity.Answer ?? string.Empty
+        };
+
+        private async Task TryCompensateAsync(Func<Task> action, string description)
+        {
+            try
             {
-                Questions = new List<ToVectorDto.QuestionRequest>()
-                {
-                    new ToVectorDto.QuestionRequest(){
-                        Id =question.ID,
-                        ReferenceID = question.VectorID,
-                        QaTypeId=question.QaItemType.QaType.ID,
-                        QaItemTypeId =question.QaItemType.ID,
-                        Question = question.Question,
-                        Answer = question.Answer
-                    }
-                }
-            };
-            var json = JsonConvert.SerializeObject(content);
-            var jsonContent = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await httpClient.PostAsync(url, jsonContent);
-
-            if (!response.IsSuccessStatusCode) throw new HttpException((HttpStatusCode)500, "ToVector API Error");
-
-            var vectorIdString = await response.Content.ReadAsStringAsync();
-            var vectorIds = JsonConvert.DeserializeObject<VectorReponseDto>(vectorIdString);
-
-            if (vectorIds is null) throw new Exception("Exstion VectorReponseDto Error");
-
-            entity.VectorID = vectorIds.VectorIds.First();
-            await _questionsRepo.UpdateAsync(entity);
+                await action();
+            }
+            catch (Exception ex)
+            {
+                // 補償失敗需人工對帳（MySQL VectorID ↔ Qdrant point）
+                _logger.LogError(ex, "Question compensation failed: {Description}", description);
+            }
         }
         #endregion
     }

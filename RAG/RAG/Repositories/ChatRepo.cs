@@ -9,19 +9,19 @@ namespace RAG.Repositories
     {
         public ChatRepo(WenDaHubContext context) : base(context) { }
 
-        public async Task<ChatHeader?> GetByIdAsync(int Id, int userId)
+        public async Task<ChatHeader?> GetByIdAsync(int Id, int userId, int spaceId)
         {
             var query = QueryAsync(
-               filter: q => q.ID == Id && q.UserID == userId
+               filter: q => q.ID == Id && q.UserID == userId && q.SpaceID == spaceId
             );
 
             return await query.FirstOrDefaultAsync();
         }
 
-        public async Task<List<ChatHeader>> GetByUserIdAsync(int Id)
+        public async Task<List<ChatHeader>> GetByUserIdAsync(int Id, int spaceId)
         {
             var query = QueryAsync(
-                filter:q=>q.UserID == Id,
+                filter:q=>q.UserID == Id && q.SpaceID == spaceId,
                 orderBy:q=>q.OrderByDescending(q=>q.UpdateAt)
                                 .ThenByDescending(x => x.CreateAt)
             );

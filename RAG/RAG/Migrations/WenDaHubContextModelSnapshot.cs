@@ -81,7 +81,13 @@ namespace RAG.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
+                        .HasColumnType("varchar(50)")
+                        .UseCollation("utf8mb4_unicode_ci");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("Name"), "utf8mb4");
+
+                    b.Property<int>("SpaceID")
+                        .HasColumnType("int(11)");
 
                     b.Property<DateTime?>("UpdateAt")
                         .HasColumnType("datetime");
@@ -93,6 +99,8 @@ namespace RAG.Migrations
                         .HasName("PRIMARY");
 
                     b.HasIndex(new[] { "UserID" }, "fk_user");
+
+                    b.HasIndex(new[] { "SpaceID", "UserID" }, "ix_chatheader_space_user");
 
                     b.ToTable("ChatHeader");
                 });
@@ -106,7 +114,10 @@ namespace RAG.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ID"));
 
                     b.Property<string>("Answer")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .UseCollation("utf8mb4_unicode_ci");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("Answer"), "utf8mb4");
 
                     b.Property<int>("ChatHeaderID")
                         .HasColumnType("int(11)");
@@ -117,7 +128,10 @@ namespace RAG.Migrations
                         .HasDefaultValueSql("current_timestamp()");
 
                     b.Property<string>("Questions")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .UseCollation("utf8mb4_unicode_ci");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("Questions"), "utf8mb4");
 
                     b.HasKey("ID")
                         .HasName("PRIMARY");
@@ -148,7 +162,10 @@ namespace RAG.Migrations
 
                     b.Property<string>("NameZh")
                         .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
+                        .HasColumnType("varchar(20)")
+                        .UseCollation("utf8mb4_unicode_ci");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("NameZh"), "utf8mb4");
 
                     b.Property<int>("QaTypeID")
                         .HasColumnType("int(11)");
@@ -221,6 +238,9 @@ namespace RAG.Migrations
 
                     MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("Question"), "utf8mb4");
 
+                    b.Property<int>("SpaceID")
+                        .HasColumnType("int(11)");
+
                     b.Property<DateTime?>("UpdateAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime")
@@ -239,6 +259,8 @@ namespace RAG.Migrations
                     b.HasIndex(new[] { "QaItemTypeID" }, "fk_questiontype");
 
                     b.HasIndex(new[] { "UserID" }, "fk_questionuser");
+
+                    b.HasIndex(new[] { "SpaceID", "UserID" }, "ix_questions_space_user");
 
                     b.ToTable("Questions");
                 });
@@ -354,10 +376,19 @@ namespace RAG.Migrations
 
             modelBuilder.Entity("RAG.Models.Entities.ChatHeader", b =>
                 {
+                    b.HasOne("RAG.Models.Entities.Space", "Space")
+                        .WithMany()
+                        .HasForeignKey("SpaceID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_chatheader_space");
+
                     b.HasOne("RAG.Models.Entities.UserCache", "User")
                         .WithMany("ChatHeader")
                         .HasForeignKey("UserID")
                         .HasConstraintName("fk_user");
+
+                    b.Navigation("Space");
 
                     b.Navigation("User");
                 });
@@ -392,6 +423,13 @@ namespace RAG.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_questiontype");
 
+                    b.HasOne("RAG.Models.Entities.Space", "Space")
+                        .WithMany()
+                        .HasForeignKey("SpaceID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_questions_space");
+
                     b.HasOne("RAG.Models.Entities.UserCache", "User")
                         .WithMany("Questions")
                         .HasForeignKey("UserID")
@@ -399,6 +437,8 @@ namespace RAG.Migrations
                         .HasConstraintName("fk_questionuser");
 
                     b.Navigation("QaItemType");
+
+                    b.Navigation("Space");
 
                     b.Navigation("User");
                 });

@@ -20,8 +20,14 @@ namespace RAG.Tests.Infrastructure
         public const int QuestionB = 30;
         public const int QaItemType = 1;
 
-        public static async Task ResetAsync(RagApiFactory factory)
+        /// <summary>
+        /// A、B 共同所屬的預設 Space（Phase 3 起 Chat / Question 需要 SpaceContext）
+        /// </summary>
+        public const int DefaultSpace = 1;
+
+        public static async Task ResetAsync(RagApiFactory factory, bool withDefaultSpace = true)
         {
+            factory.RagGateway.Reset();
             await factory.WithDbAsync(async db =>
             {
                 await db.Database.EnsureDeletedAsync();
@@ -35,15 +41,23 @@ namespace RAG.Tests.Infrastructure
                     new UserCache { ID = UserB, Account = "userB", Password = "passB", NameZh = "B", IsActive = true, Manage = "admin" });
 
                 db.ChatHeader.AddRange(
-                    new ChatHeader { ID = ChatA, Name = "chat-a", UserID = UserA, CreateAt = DateTime.Now },
-                    new ChatHeader { ID = ChatB, Name = "chat-b", UserID = UserB, CreateAt = DateTime.Now });
+                    new ChatHeader { ID = ChatA, Name = "chat-a", UserID = UserA, SpaceID = DefaultSpace, CreateAt = DateTime.Now },
+                    new ChatHeader { ID = ChatB, Name = "chat-b", UserID = UserB, SpaceID = DefaultSpace, CreateAt = DateTime.Now });
                 db.ChatLog.AddRange(
                     new ChatLog { ID = 100, ChatHeaderID = ChatA, Questions = "qa", Answer = "aa" },
                     new ChatLog { ID = ChatLogB, ChatHeaderID = ChatB, Questions = "qb", Answer = "ab" });
 
                 db.Questions.AddRange(
-                    new Questions { ID = QuestionA, QaItemTypeID = QaItemType, UserID = UserA, Question = "question-a", Answer = "answer-a", VectorID = "va" },
-                    new Questions { ID = QuestionB, QaItemTypeID = QaItemType, UserID = UserB, Question = "question-b", Answer = "answer-b", VectorID = "vb" });
+                    new Questions { ID = QuestionA, QaItemTypeID = QaItemType, UserID = UserA, SpaceID = DefaultSpace, Question = "question-a", Answer = "answer-a", VectorID = "va" },
+                    new Questions { ID = QuestionB, QaItemTypeID = QaItemType, UserID = UserB, SpaceID = DefaultSpace, Question = "question-b", Answer = "answer-b", VectorID = "vb" });
+
+                if (withDefaultSpace)
+                {
+                    db.Space.Add(new Space { ID = DefaultSpace, Key = "default", Name = "預設空間", IsActive = true });
+                    db.AccountSpace.AddRange(
+                        new AccountSpace { UserID = UserA, SpaceID = DefaultSpace, Role = "member", IsActive = true, IsDefault = true },
+                        new AccountSpace { UserID = UserB, SpaceID = DefaultSpace, Role = "member", IsActive = true, IsDefault = true });
+                }
 
                 await db.SaveChangesAsync();
             });

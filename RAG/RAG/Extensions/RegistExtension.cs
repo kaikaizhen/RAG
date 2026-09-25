@@ -41,6 +41,12 @@ namespace RAG.Extensions
         {
             var ragOption = configuration.GetSection(RagOption.SectionName).Get<RagOption>() ?? new RagOption();
 
+            // RAG Server 內部金鑰缺少即 fail-fast；不可在 request 過程才發現或以空金鑰呼叫
+            if (string.IsNullOrWhiteSpace(ragOption.InternalApiKey) || ragOption.InternalApiKey.StartsWith('<'))
+            {
+                throw new InvalidOperationException("RagOption:InternalApiKey is missing; set RagOption__InternalApiKey.");
+            }
+
             services.AddSingleton(ragOption);
 
             return services;

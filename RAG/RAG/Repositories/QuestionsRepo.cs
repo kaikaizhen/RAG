@@ -10,32 +10,38 @@ namespace RAG.Repositories
     {
         public QuestionsRepo(WenDaHubContext context) : base(context) { }
 
-        public async Task<List<Questions>> Get(int userId)
+        public async Task<List<Questions>> Get(int userId, int spaceId)
         {
             var query = QueryAsync(
-                 filter: q => q.UserID == userId
+                 filter: q => q.UserID == userId && q.SpaceID == spaceId
             );
 
             return await query.ToListAsync();
         }
 
-        public async Task<List<Questions>> GetByTypeIdAsync(int userId,int Id)
+        public async Task<List<Questions>> GetByTypeIdAsync(int userId, int spaceId, int Id)
         {
             var query = QueryAsync(
-                filter: q=>q.UserID == userId && q.QaItemTypeID == Id  
+                filter: q=>q.UserID == userId && q.SpaceID == spaceId && q.QaItemTypeID == Id
             );
 
             return await query.ToListAsync();
         }
 
-        public async Task<Questions?> GetByIdAsync(int Id, int userId)
+        public async Task<Questions?> GetByIdAsync(int Id, int userId, int spaceId)
         {
             var query = QueryAsync(
-               filter: q => q.ID == Id && q.UserID == userId,
+               filter: q => q.ID == Id && q.UserID == userId && q.SpaceID == spaceId,
                includes:q=>q.Include(x=>x.QaItemType.QaType)
             );
 
             return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> AnyByQaItemTypeIdsAsync(IEnumerable<int> qaItemTypeIds)
+        {
+            var ids = qaItemTypeIds.ToList();
+            return await QueryAsync(filter: q => ids.Contains(q.QaItemTypeID)).AnyAsync();
         }
 
         public async Task CreateAsync(Questions entity)

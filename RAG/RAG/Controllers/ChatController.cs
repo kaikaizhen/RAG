@@ -8,6 +8,7 @@ using RAG.Models.Dtos.RagServer;
 using RAG.Models.Params.Chat;
 using RAG.Models.ViewModels.Chat;
 using RAG.Services.Interfaces;
+using RAG.Spaces;
 using System;
 
 namespace RAG.Controllers
@@ -15,6 +16,7 @@ namespace RAG.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [RequireSpaceContext]
     [Tags("回應功能模組")]
     public class ChatController : ControllerBase
     {

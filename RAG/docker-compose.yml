@@ -16,4 +16,6 @@ services:
       # 以環境變數覆寫 appsettings，避免將機敏資訊寫進版控
       ConnectionStrings__DefaultConnection: ${DB_CONNECTION_STRING}
       RagOption__BaseUrl: ${RAG_SERVER_BASE_URL}
+      # 與 RAG_Server 的 INTERNAL_API_KEY 相同；只放在未納版控的 .env
+      RagOption__InternalApiKey: ${RAG_INTERNAL_API_KEY}
     restart: unless-stopped   # 自動重啟策略

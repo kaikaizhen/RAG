@@ -6,12 +6,14 @@ using RAG.Models.Dtos.Question;
 using RAG.Models.Params.Question;
 using RAG.Models.ViewModels.Question;
 using RAG.Services.Interfaces;
+using RAG.Spaces;
 
 namespace RAG.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [RequireSpaceContext]
     [Tags("問題模組")]
     public class QuestionController : ControllerBase
     {

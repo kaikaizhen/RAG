@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using RAG.Rag;
 using RAG.Models.Entities;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -19,6 +21,11 @@ namespace RAG.Tests.Infrastructure
         public string SecretKey { get; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
         public string SecretFilePath { get; }
+
+        /// <summary>
+        /// 取代真實 RAG Server 的 gateway（記錄呼叫的 RagScope）
+        /// </summary>
+        public FakeRagGateway RagGateway { get; } = new();
 
         private readonly string _databaseName = $"rag-tests-{Guid.NewGuid()}";
 
@@ -41,6 +48,7 @@ namespace RAG.Tests.Infrastructure
         {
             builder.UseEnvironment("Testing");
             builder.UseSetting("Jwt:SecretFilePath", SecretFilePath);
+            builder.UseSetting("RagOption:InternalApiKey", "test-internal-key");
 
             builder.ConfigureServices(services =>
             {
@@ -51,6 +59,9 @@ namespace RAG.Tests.Infrastructure
                              || d.ServiceType == typeof(WenDaHubContext))
                     .ToList();
                 foreach (var descriptor in dbDescriptors) services.Remove(descriptor);
+
+                services.RemoveAll<IRagGateway>();
+                services.AddSingleton<IRagGateway>(RagGateway);
 
                 services.AddDbContext<WenDaHubContext>(options => options
                     .UseInMemoryDatabase(_databaseName)

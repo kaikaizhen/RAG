@@ -1,11 +1,12 @@
 ﻿using AutoMapper;
 using Library.Http;
 using RAG.Authentication;
-using RAG.Commons.Options;
+using RAG.Rag;
 using RAG.Models.Dtos.User;
 using RAG.Models.Entities;
 using RAG.Repositories.Interfaces;
 using RAG.Services.Interfaces;
+using RAG.SpaceRuntime;
 using System.Net;
 
 namespace RAG.Services
@@ -13,7 +14,8 @@ namespace RAG.Services
     public class UserService : IUserService
     {
         private readonly IMapper _mapper;
-        private readonly RagOption _ragOption;
+        private readonly IRagScopeFactory _ragScopeFactory;
+        private readonly IRagGateway _ragGateway;
 
         private readonly IUserCacheRepo _userCacheRepo;
         private readonly IQuestionsRepo _questionsRepo;
@@ -21,14 +23,16 @@ namespace RAG.Services
 
         public UserService(
             IMapper mapper,
-            RagOption ragOption,
+            IRagScopeFactory ragScopeFactory,
+            IRagGateway ragGateway,
             IUserCacheRepo userCacheRepo,
             IQuestionsRepo questionsRepo,
             ICurrentUserAccessor currentUser
         )
         {
             _mapper = mapper;
-            _ragOption = ragOption;
+            _ragScopeFactory = ragScopeFactory;
+            _ragGateway = ragGateway;
             _userCacheRepo = userCacheRepo;
             _questionsRepo = questionsRepo;
             _currentUser = currentUser;
@@ -67,29 +71,18 @@ namespace RAG.Services
         {
             var user = await GetSelfAsync(Id);
 
+            // 先刪本人各 Space 的向量（不存在視為成功，可重試），再於交易內刪除 MySQL 資料
+            foreach (var item in user.Questions.Where(q => !string.IsNullOrEmpty(q.VectorID)))
+            {
+                await _ragGateway.DeleteQuestionAsync(_ragScopeFactory.ForVerifiedRecord(item.SpaceID), item.VectorID!);
+            }
+
             await _userCacheRepo.TransactionAsync();
-            try
-            {
-                var httpClient = new HttpClient();
-                foreach(var item in user.Questions)
-                {
-                    var url = $"{_ragOption.BaseUrl}{_ragOption.DeleteUrl}{item.VectorID}";
 
-                    var response = await httpClient.DeleteAsync(url);
+            await _questionsRepo.DeleteRangeAsync(user.Questions.ToList());
+            await _userCacheRepo.DeleteAsync(user);
 
-                    if (!response.IsSuccessStatusCode) throw new HttpException((HttpStatusCode)500,"DeleteVector API Error");
-                }
-                
-
-                await _questionsRepo.DeleteRangeAsync(user.Questions);
-                await _userCacheRepo.DeleteAsync(user);
-
-                await _userCacheRepo.CommitAsync();
-            }
-            catch
-            {
-                throw;
-            }
+            await _userCacheRepo.CommitAsync();
         }
 
         #region Private Methods

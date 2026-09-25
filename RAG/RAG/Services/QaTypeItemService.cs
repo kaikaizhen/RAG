@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using Library.Http;
-using RAG.Commons.Options;
 using RAG.Models.Dtos.QaTypeItem;
 using RAG.Models.Entities;
 using RAG.Repositories.Interfaces;
@@ -12,19 +11,16 @@ namespace RAG.Services
     public class QaTypeItemService : IQaTypeItemService
     {
         private readonly IMapper _mapper;
-        private readonly RagOption _ragOption;
         private readonly IQaTypeItemRepo _qaTypeItemRepo;
         private readonly IQuestionsRepo _questionsRepo;
 
         public QaTypeItemService(
             IMapper mapper,
-            RagOption ragOption,
             IQaTypeItemRepo qaTypeItemRepo,
             IQuestionsRepo questionsRepo
         )
         {
             _mapper = mapper;
-            _ragOption = ragOption;
             _qaTypeItemRepo = qaTypeItemRepo;
             _questionsRepo = questionsRepo;
         }
@@ -55,27 +51,13 @@ namespace RAG.Services
         {
             var qaItem = await _qaTypeItemRepo.GetByIdAsync(Id) ?? throw new HttpException((HttpStatusCode)400, "查無此問題種類細項");
 
-            await _qaTypeItemRepo.TransactionAsync();
-            try
+            // 全域共用字典：仍有任何 Space 的問題使用時拒絕刪除，不跨 Space 連帶刪除問題與向量
+            if (await _questionsRepo.AnyByQaItemTypeIdsAsync(new[] { qaItem.ID }))
             {
-                foreach (var item in qaItem.Questions)
-                {
-                    var url = $"{_ragOption.BaseUrl}{_ragOption.DeleteUrl}{item.VectorID}";
-                    var httpClient = new HttpClient();
-                    var response = await httpClient.DeleteAsync(url);
-
-                    if (!response.IsSuccessStatusCode) throw new HttpException((HttpStatusCode)500, "Delete Question API Error");
-                }
-
-                await _questionsRepo.DeleteRangeAsync(qaItem.Questions);
-                await _qaTypeItemRepo.DeleteAsync(qaItem);
-
-                await _qaTypeItemRepo.CommitAsync();
+                throw new HttpException(HttpStatusCode.Conflict, "仍有問題使用此問題種類細項，無法刪除");
             }
-            catch
-            {
-                throw;
-            }
+
+            await _qaTypeItemRepo.DeleteAsync(qaItem);
         }
     }
 }

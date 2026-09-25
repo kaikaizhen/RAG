@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from typing import Optional, List
+import hmac
 import os
 import uuid
 import threading
@@ -15,8 +16,15 @@ import time
 # ==============================
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+# 測試可設定 QDRANT_LOCATION=":memory:"；設定後優先於 host / port
+QDRANT_LOCATION = os.getenv("QDRANT_LOCATION", "")
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "rag_knowledge")
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
+# .NET API 與本服務共用的內部金鑰；未設定時所有受保護端點一律拒絕（fail-closed）
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
+DISABLE_MODEL_PRELOAD = os.getenv("RAG_DISABLE_MODEL_PRELOAD", "") == "1"
+
+SPACE_ID_KEY = "space_id"
 
 # ==============================
 # 初始化 FastAPI
@@ -35,13 +43,25 @@ app.add_middleware(
 # ==============================
 # 初始化 Qdrant
 # ==============================
-client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+client = QdrantClient(location=QDRANT_LOCATION) if QDRANT_LOCATION else QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
 
 # 全域變數用於快取模型
 _model = None
 _qa_model = None
 _model_loading = False
 _qa_model_loading = False
+_space_index_ready = False
+
+
+# ==============================
+# 內部服務驗證
+# ==============================
+def require_internal_key(x_internal_api_key: Optional[str] = Header(default=None)):
+    """僅允許持有內部金鑰的 .NET API 呼叫；以常數時間比對"""
+    if not INTERNAL_API_KEY or not x_internal_api_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not hmac.compare_digest(x_internal_api_key.encode("utf-8"), INTERNAL_API_KEY.encode("utf-8")):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 # ==============================
@@ -50,7 +70,7 @@ _qa_model_loading = False
 def load_models_background():
     """在背景執行緒中載入模型"""
     global _model, _qa_model, _model_loading, _qa_model_loading
-    
+
     if not _model_loading:
         _model_loading = True
         try:
@@ -61,7 +81,7 @@ def load_models_background():
         except Exception as e:
             print(f"SentenceTransformer 載入失敗: {e}")
         _model_loading = False
-    
+
     if not _qa_model_loading:
         _qa_model_loading = True
         try:
@@ -107,6 +127,7 @@ class CaseInsensitiveModel(BaseModel):
 class QdrantPayload(CaseInsensitiveModel):
     id: Optional[str] = Field(default=None)
     referenId: Optional[str] = Field(default=None)
+    space_id: int
     type: str
     question: str
     answer: str
@@ -132,10 +153,13 @@ class QuestionRequest(CaseInsensitiveModel):
 
 
 class QuestionListRequest(CaseInsensitiveModel):
+    # 由 .NET API 依已驗證的 SpaceContext 決定；本服務只信任持有內部金鑰的呼叫者
+    space_id: int = Field(gt=0)
     questions: List[QuestionRequest]
 
 
 class AskRequest(CaseInsensitiveModel):
+    space_id: int = Field(gt=0)
     question: str
     type: Optional[str] = None
 
@@ -155,17 +179,45 @@ def dedup_text(text: str) -> str:
     return "。".join(result) + ("。" if result else "")
 
 
+def space_filter(space_id: int, *conditions) -> models.Filter:
+    """所有讀寫刪都必須帶的 Space 範圍條件"""
+    return models.Filter(
+        must=[models.FieldCondition(key=SPACE_ID_KEY, match=models.MatchValue(value=space_id)), *conditions]
+    )
+
+
+def find_points_in_space(space_id: int, point_ids: List[str]):
+    """只在指定 Space 內依 ID 取得 point（其他 Space 的同 ID point 視為不存在）"""
+    points, _ = client.scroll(
+        collection_name=COLLECTION_NAME,
+        scroll_filter=space_filter(space_id, models.HasIdCondition(has_id=point_ids)),
+        limit=len(point_ids),
+        with_payload=True,
+        with_vectors=False,
+    )
+    return points
+
+
 # ==============================
 # 核心功能
 # ==============================
 def ensure_collection(collection_name: str = COLLECTION_NAME):
-    """確保 Collection 存在"""
+    """確保 Collection 與 space_id payload index 存在"""
+    global _space_index_ready
     collections = [c.name for c in client.get_collections().collections]
     if collection_name not in collections:
-        client.recreate_collection(
+        client.create_collection(
             collection_name=collection_name,
             vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE)
         )
+        _space_index_ready = False
+    if not _space_index_ready:
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name=SPACE_ID_KEY,
+            field_schema=models.PayloadSchemaType.INTEGER,
+        )
+        _space_index_ready = True
 
 
 def insert_vectors(collection_name: str, vectors: List[dict]):
@@ -181,13 +233,20 @@ def insert_vectors(collection_name: str, vectors: List[dict]):
 
 
 def process_questions_to_vector(request: QuestionListRequest):
-    """將問題轉向量並寫入 Qdrant"""
+    """將問題轉向量並寫入 Qdrant（僅限指定 Space）"""
     ensure_collection()
     model = get_sentence_model()
-    
+
     if model is None:
-        return {"status": "loading", "message": "模型正在載入中，請稍後再試"}
-    
+        raise HTTPException(status_code=503, detail="模型正在載入中，請稍後再試")
+
+    # 既有 ID 必須屬於同一個 Space，避免以猜測的 ID 覆寫其他 Space 的向量
+    reference_ids = [q.referenceId for q in request.questions if q.referenceId]
+    if reference_ids:
+        existing = client.retrieve(collection_name=COLLECTION_NAME, ids=reference_ids, with_payload=True)
+        if any((p.payload or {}).get(SPACE_ID_KEY) != request.space_id for p in existing):
+            raise HTTPException(status_code=403, detail="向量不屬於此範圍")
+
     vectors = []
     for q in request.questions:
         try:
@@ -195,6 +254,7 @@ def process_questions_to_vector(request: QuestionListRequest):
             payload = QdrantPayload(
                 id=q.referenceId if q.referenceId else str(uuid.uuid4()),
                 referenId=str(q.id),
+                space_id=request.space_id,
                 type=str(q.qaTypeId),
                 question=q.question,
                 answer=q.answer,
@@ -202,7 +262,7 @@ def process_questions_to_vector(request: QuestionListRequest):
             vectors.append({
                 "id": payload.id,
                 "vector": vector,
-                "payload": payload.dict()
+                "payload": payload.model_dump(mode="json")
             })
         except Exception as e:
             print(f"處理問題時發生錯誤: {e}")
@@ -216,27 +276,25 @@ def process_questions_to_vector(request: QuestionListRequest):
 
 
 def generate_answer(request: AskRequest):
-    """查詢 Qdrant 並產生回答"""
+    """查詢 Qdrant 並產生回答（僅搜尋指定 Space）"""
     ensure_collection()
     model = get_sentence_model()
-    
+
     if model is None:
-        raise HTTPException(status_code=400, detail="模型正在載入中，請稍後再試")
+        raise HTTPException(status_code=503, detail="模型正在載入中，請稍後再試")
 
     query_vector = model.encode(request.question).tolist()
 
-    query_filter = None
+    extra = []
     if request.type:
-        query_filter = models.Filter(
-            must=[models.FieldCondition(key="type", match=models.MatchValue(value=request.type))]
-        )
+        extra.append(models.FieldCondition(key="type", match=models.MatchValue(value=request.type)))
 
     results = client.search(
         collection_name=COLLECTION_NAME,
         query_vector=query_vector,
         limit=3,
         with_payload=True,
-        query_filter=query_filter
+        query_filter=space_filter(request.space_id, *extra)
     )
 
     if not results:
@@ -279,30 +337,18 @@ def generate_answer(request: AskRequest):
     }
 
 
-def delete_question_by_id(question_id: str):
-    """刪除指定 ID 的問題"""
+def delete_question_by_id(question_id: str, space_id: int):
+    """刪除指定 Space 內的問題向量；其他 Space 的同 ID point 不受影響"""
     ensure_collection()
-    result = client.retrieve(collection_name=COLLECTION_NAME, ids=[question_id])
-    if not result:
-        return {"status": "error", "message": f"找不到 ID: {question_id}"}
+    if not find_points_in_space(space_id, [question_id]):
+        raise HTTPException(status_code=404, detail=f"找不到 ID: {question_id}")
     client.delete(
         collection_name=COLLECTION_NAME,
-        points_selector=models.PointIdsList(points=[question_id])
-    )
-    return {"status": "success", "message": f"已刪除問題 ID: {question_id}"}
-
-
-def delete_type_collection(collection_name: str, type_value: str):
-    """刪除指定 type 向量"""
-    client.delete(
-        collection_name=collection_name,
         points_selector=models.FilterSelector(
-            filter=models.Filter(
-                must=[models.FieldCondition(key="type", match=models.MatchValue(value=type_value))]
-            )
+            filter=space_filter(space_id, models.HasIdCondition(has_id=[question_id]))
         )
     )
-    return {"status": f"已刪除 type={type_value} 的所有向量"}
+    return {"status": "success", "message": f"已刪除問題 ID: {question_id}"}
 
 
 def get_collections():
@@ -323,32 +369,27 @@ def read_root():
     }
 
 
-@app.post("/questionsToVector")
+@app.post("/questionsToVector", dependencies=[Depends(require_internal_key)])
 def api_questions_to_vector(request: QuestionListRequest):
     return process_questions_to_vector(request)
 
 
-@app.post("/ask")
+@app.post("/ask", dependencies=[Depends(require_internal_key)])
 def api_ask(request: AskRequest):
     return generate_answer(request)
 
 
-@app.delete("/questions/{question_id}")
-def api_delete_question(question_id: str):
-    return delete_question_by_id(question_id)
+@app.delete("/questions/{question_id}", dependencies=[Depends(require_internal_key)])
+def api_delete_question(question_id: str, space_id: int = Query(gt=0)):
+    return delete_question_by_id(question_id, space_id)
 
 
-@app.delete("/delete_type/{type_value}")
-def api_delete_type(type_value: str):
-    return delete_type_collection(COLLECTION_NAME, type_value)
-
-
-@app.get("/collections")
+@app.get("/collections", dependencies=[Depends(require_internal_key)])
 def api_get_collections():
     return get_collections()
 
 
-@app.get("/model_status")
+@app.get("/model_status", dependencies=[Depends(require_internal_key)])
 def get_model_status():
     return {
         "sentence_model": "loaded" if _model else "loading" if _model_loading else "not_loaded",
@@ -356,12 +397,13 @@ def get_model_status():
     }
 
 
-@app.get("/questions")
-def list_all_questions(limit: int = 100):
-    """列出所有問題"""
+@app.get("/questions", dependencies=[Depends(require_internal_key)])
+def list_questions(space_id: int = Query(gt=0), limit: int = Query(default=100, gt=0, le=1000)):
+    """列出指定 Space 的問題"""
     ensure_collection()
     result = client.scroll(
         collection_name=COLLECTION_NAME,
+        scroll_filter=space_filter(space_id),
         limit=limit,
         with_payload=True,
         with_vectors=False
@@ -384,6 +426,9 @@ def list_all_questions(limit: int = 100):
 # ==============================
 @app.on_event("startup")
 async def startup_event():
+    if DISABLE_MODEL_PRELOAD:
+        return
+
     def delayed_load():
         time.sleep(2)
         load_models_background()

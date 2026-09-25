@@ -30,7 +30,10 @@ namespace RAG.Commons.Options
         /// <summary>
         /// 刪除種類向量
         /// </summary>
-        public string DeleteTypeUrl { get; set; } = "/delete_type/";
+        /// <summary>
+        /// 呼叫 RAG Server 的內部金鑰（X-Internal-Api-Key）；僅由環境變數或未納版控的設定檔提供
+        /// </summary>
+        public string InternalApiKey { get; set; } = string.Empty;
 
         /// <summary>
         /// 查詢目前向量資料庫種類

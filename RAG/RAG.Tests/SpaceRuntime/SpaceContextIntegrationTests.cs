@@ -35,7 +35,7 @@ namespace RAG.Tests.SpaceRuntime
 
         public async Task InitializeAsync()
         {
-            await SeedData.ResetAsync(_factory);
+            await SeedData.ResetAsync(_factory, withDefaultSpace: false);
             await _factory.WithDbAsync(async db =>
             {
                 db.UserCache.AddRange(
@@ -251,12 +251,16 @@ namespace RAG.Tests.SpaceRuntime
         }
 
         [Fact]
-        public async Task Endpoints_without_space_requirement_are_unaffected()
+        public async Task Space_scoped_endpoints_require_membership_but_account_endpoints_do_not()
         {
-            // Phase 1 endpoint 不需要 SpaceContext；無 membership 的使用者仍可使用（Phase 3 才加入 Space scope）
-            var response = await ClientFor(SeedData.UserB).GetAsync("/api/Chat");
+            var client = ClientFor(SeedData.UserB);
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            // 帳號層級 API 不需要 SpaceContext
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/User/{SeedData.UserB}")).StatusCode);
+
+            // Phase 3：Chat / Question 需要 SpaceContext，無 membership 一律 403
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/Chat")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/Question?Type=0")).StatusCode);
         }
 
         private sealed record CurrentSpace(int SpaceID, string Key, string Name, string Role, List<string> Permissions, string? RepositoryID, string? ProjectID);

@@ -13,7 +13,6 @@ namespace RAG.Extensions.Mapping
         {
             #region SendChat
             CreateMap<SendChatParam, ChatDto>();
-            CreateMap<ChatDto, SendChatDto>();
             CreateMap<ChatReponseDto, ChatVM>();
             #endregion
 

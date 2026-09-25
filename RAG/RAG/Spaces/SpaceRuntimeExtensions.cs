@@ -1,3 +1,4 @@
+using RAG.Rag;
 using RAG.Repositories;
 using RAG.SpaceRuntime;
 
@@ -11,6 +12,8 @@ namespace RAG.Spaces
             services.AddScoped<IAccountSpaceResolver, AccountSpaceResolver>();
             services.AddSingleton<IResourceScopeResolver, ResourceScopeResolver>();
             services.AddScoped<ISpaceContextAccessor, SpaceContextAccessor>();
+            services.AddSingleton<IRagScopeFactory, RagScopeFactory>();
+            services.AddHttpClient<IRagGateway, RagGateway>();
 
             return services;
         }
