@@ -325,6 +325,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/Knowledge/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 在目前 Space 的知識庫檢索（回傳證據與類似答案，不產生答案） */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSearchParam"];
+                    "text/json": components["schemas"]["KnowledgeSearchParam"];
+                    "application/*+json": components["schemas"]["KnowledgeSearchParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KnowledgeSearchVM"];
+                        "application/json": components["schemas"]["KnowledgeSearchVM"];
+                        "text/json": components["schemas"]["KnowledgeSearchVM"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/QaType": {
         parameters: {
             query?: never;
@@ -794,6 +860,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/Skill/bundle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 取得目前 Space 的有效 Skill / Workflow 內容（受 token 預算限制，Workflow 優先） */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description token 預算（預設與上限由伺服器設定） */
+                    tokenBudget?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SkillBundleVM"];
+                        "application/json": components["schemas"]["SkillBundleVM"];
+                        "text/json": components["schemas"]["SkillBundleVM"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/Skill/effective": {
         parameters: {
             query?: never;
@@ -1031,6 +1171,8 @@ export interface components {
             question: string | null;
             /** @description 解答 */
             answer: string | null;
+            /** @description 知識狀態：Verified / Stale / Inferred / Superseded（未提供時新增為 Verified、更新時保留原值） */
+            status?: string | null;
         };
         CreateUserParam: {
             /** @description 帳號 */
@@ -1097,6 +1239,62 @@ export interface components {
              */
             createAt?: string;
         };
+        KnowledgeItemVM: {
+            /**
+             * Format: int32
+             * @description 知識（問題）編號
+             */
+            questionID?: number;
+            /** @description 問題 */
+            question?: string | null;
+            /** @description 答案 */
+            answer?: string | null;
+            /**
+             * Format: double
+             * @description 相似度分數（0-1）
+             */
+            score?: number;
+            /** @description 知識狀態：Verified / Stale / Inferred */
+            status?: string | null;
+        };
+        KnowledgeSearchParam: {
+            /** @description 查詢內容（1-2000 字元） */
+            query: string | null;
+            /** @description 問題種類編號（選填，限縮搜尋範圍） */
+            type?: string | null;
+        };
+        KnowledgeSearchVM: {
+            /**
+             * Format: int32
+             * @description Space 編號
+             */
+            spaceID?: number;
+            /** @description Space 識別字 */
+            spaceKey?: string | null;
+            /** @description grounded：有 Verified 證據；partial：只有 Stale / Inferred 證據；insufficient：沒有證據 */
+            status?: string | null;
+            /** @description 可作為依據的知識（依分數排序；Stale / Inferred 可信度較低） */
+            evidence?: components["schemas"]["KnowledgeItemVM"][] | null;
+            /** @description 類似但分數不足的答案：僅供參考，不可當作依據 */
+            similar?: components["schemas"]["KnowledgeItemVM"][] | null;
+            /** @description 給使用端 AI 的使用說明 */
+            notice?: string | null;
+        };
+        LoadedArtifactVM: {
+            /** @description 識別字 */
+            id?: string | null;
+            /** @description 版本 */
+            version?: string | null;
+            /** @description 來源：default 或 space:<key> */
+            source?: string | null;
+            /** @description 內容（Markdown） */
+            content?: string | null;
+            /**
+             * Format: int32
+             * @description 預估 token 數
+             */
+            tokenEstimate?: number;
+        };
         LoginParam: {
             /** @description 帳號 */
             account: string | null;
@@ -1134,6 +1332,25 @@ export interface components {
             type?: string | null;
             /** @description 聊天編號 */
             chatID?: string | null;
+        };
+        SkillBundleVM: {
+            /** @description Space 識別字 */
+            spaceKey?: string | null;
+            /** @description 已載入的 Skill（依順序：Default 在前、Space 擴充在後） */
+            skills?: components["schemas"]["LoadedArtifactVM"][] | null;
+            workflow?: components["schemas"]["LoadedArtifactVM"];
+            /** @description 因 token 預算不足未載入的 Skill */
+            omittedSkillIds?: string[] | null;
+            /**
+             * Format: int32
+             * @description 已載入內容的預估 token 數
+             */
+            tokenEstimate?: number;
+            /**
+             * Format: int32
+             * @description 本次使用的 token 預算
+             */
+            tokenBudget?: number;
         };
         SpaceVM: {
             /**
@@ -1200,6 +1417,8 @@ export interface components {
             question: string | null;
             /** @description 解答 */
             answer: string | null;
+            /** @description 知識狀態：Verified / Stale / Inferred / Superseded（未提供時新增為 Verified、更新時保留原值） */
+            status?: string | null;
         };
         UpdateUserParam: {
             /**

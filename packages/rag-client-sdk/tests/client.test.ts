@@ -179,6 +179,40 @@ describe('401 handling', () => {
   });
 });
 
+describe('context (skills bundle / knowledge search)', () => {
+  it('knowledge search sends the query with the space hint and is never cached', async () => {
+    const { client, server, login } = signedIn({
+      'POST /api/v1/Knowledge/search': (r) => ({ status: 200, body: { spaceID: 2, status: 'insufficient', evidence: [], similar: [], notice: `q=${(r.body as { query: string }).query}` } }),
+    });
+    await login();
+    client.spaces.select(2);
+
+    const first = await client.knowledge.search('請假流程');
+    await client.knowledge.search('請假流程');
+
+    expect(first.status).toBe('insufficient');
+    const calls = server.requests.filter((r) => r.path === '/api/v1/Knowledge/search');
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toMatchObject({ method: 'POST', body: { query: '請假流程', type: null } });
+    expect(calls[0]!.headers['x-space-id']).toBe('2');
+  });
+
+  it('skill bundle is cached per space and budget, cleared on space change, and validates budget', async () => {
+    const { client, server, login } = signedIn({ 'GET /api/v1/Skill/bundle': () => ({ status: 200, body: { spaceKey: 'default', skills: [], tokenEstimate: 0, tokenBudget: 8000 } }) });
+    await login();
+
+    await client.skills.bundle();
+    await client.skills.bundle();
+    await client.skills.bundle(4000);
+    client.spaces.select(3);
+    await client.skills.bundle();
+    await expect(client.skills.bundle(0)).rejects.toBeInstanceOf(RagValidationError);
+
+    const calls = server.requests.filter((r) => r.path === '/api/v1/Skill/bundle');
+    expect(calls).toHaveLength(3);
+  });
+});
+
 describe('error mapping', () => {
   it.each([
     [400, RagValidationError],

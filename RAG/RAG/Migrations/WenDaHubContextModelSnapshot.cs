@@ -241,6 +241,13 @@ namespace RAG.Migrations
                     b.Property<int>("SpaceID")
                         .HasColumnType("int(11)");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("Verified");
+
                     b.Property<DateTime?>("UpdateAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime")
@@ -262,7 +269,10 @@ namespace RAG.Migrations
 
                     b.HasIndex(new[] { "SpaceID", "UserID" }, "ix_questions_space_user");
 
-                    b.ToTable("Questions");
+                    b.ToTable("Questions", t =>
+                        {
+                            t.HasCheckConstraint("ck_questions_status", "`Status` IN ('Verified','Stale','Inferred','Superseded')");
+                        });
                 });
 
             modelBuilder.Entity("RAG.Models.Entities.Space", b =>

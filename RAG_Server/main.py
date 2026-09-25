@@ -18,7 +18,10 @@ QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 # 測試可設定 QDRANT_LOCATION=":memory:"；設定後優先於 host / port
 QDRANT_LOCATION = os.getenv("QDRANT_LOCATION", "")
-COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "rag_knowledge")
+# 藍綠切換：新模型使用新 collection，舊 collection（rag_knowledge，384 維）保留供回退
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "rag_knowledge_bge_m3")
+# 中英雙語與跨語言檢索（2026-09-25 以雙語測試集比較後選定）
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 # .NET API 與本服務共用的內部金鑰；未設定時所有受保護端點一律拒絕（fail-closed）
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
@@ -76,7 +79,7 @@ def load_models_background():
         try:
             print("背景載入 SentenceTransformer 模型...")
             from sentence_transformers import SentenceTransformer
-            _model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+            _model = SentenceTransformer(EMBEDDING_MODEL)
             print("SentenceTransformer 模型載入完成")
         except Exception as e:
             print(f"SentenceTransformer 載入失敗: {e}")
@@ -164,6 +167,13 @@ class AskRequest(CaseInsensitiveModel):
     type: Optional[str] = None
 
 
+class SearchRequest(CaseInsensitiveModel):
+    space_id: int = Field(gt=0)
+    query: str = Field(min_length=1, max_length=2000)
+    limit: int = Field(default=10, ge=1, le=50)
+    type: Optional[str] = None
+
+
 # ==============================
 # 工具函式
 # ==============================
@@ -201,16 +211,33 @@ def find_points_in_space(space_id: int, point_ids: List[str]):
 # ==============================
 # 核心功能
 # ==============================
-def ensure_collection(collection_name: str = COLLECTION_NAME):
-    """確保 Collection 與 space_id payload index 存在"""
+def embedding_dimension(model) -> int:
+    return model.get_sentence_embedding_dimension()
+
+
+def encode(model, text: str) -> List[float]:
+    return model.encode(text, normalize_embeddings=True).tolist()
+
+
+def ensure_collection(vector_size: Optional[int] = None, collection_name: str = COLLECTION_NAME) -> bool:
+    """
+    確保 Collection 與 space_id payload index 存在。
+    vector_size 為 None（讀取 / 刪除）且 collection 不存在時回傳 False，不建立；
+    collection 維度與目前模型不符時拒絕操作，避免混入不相容的向量。
+    """
     global _space_index_ready
-    collections = [c.name for c in client.get_collections().collections]
-    if collection_name not in collections:
+    if not client.collection_exists(collection_name):
+        if vector_size is None:
+            return False
         client.create_collection(
             collection_name=collection_name,
-            vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE)
+            vectors_config=models.VectorParams(size=vector_size, distance=models.Distance.COSINE)
         )
         _space_index_ready = False
+    elif vector_size is not None:
+        existing = client.get_collection(collection_name).config.params.vectors.size
+        if existing != vector_size:
+            raise HTTPException(status_code=500, detail=f"Collection 維度 {existing} 與 embedding 模型維度 {vector_size} 不符")
     if not _space_index_ready:
         client.create_payload_index(
             collection_name=collection_name,
@@ -218,6 +245,7 @@ def ensure_collection(collection_name: str = COLLECTION_NAME):
             field_schema=models.PayloadSchemaType.INTEGER,
         )
         _space_index_ready = True
+    return True
 
 
 def insert_vectors(collection_name: str, vectors: List[dict]):
@@ -234,11 +262,11 @@ def insert_vectors(collection_name: str, vectors: List[dict]):
 
 def process_questions_to_vector(request: QuestionListRequest):
     """將問題轉向量並寫入 Qdrant（僅限指定 Space）"""
-    ensure_collection()
     model = get_sentence_model()
 
     if model is None:
         raise HTTPException(status_code=503, detail="模型正在載入中，請稍後再試")
+    ensure_collection(embedding_dimension(model))
 
     # 既有 ID 必須屬於同一個 Space，避免以猜測的 ID 覆寫其他 Space 的向量
     reference_ids = [q.referenceId for q in request.questions if q.referenceId]
@@ -250,7 +278,7 @@ def process_questions_to_vector(request: QuestionListRequest):
     vectors = []
     for q in request.questions:
         try:
-            vector = model.encode(q.question).tolist()
+            vector = encode(model, q.question)
             payload = QdrantPayload(
                 id=q.referenceId if q.referenceId else str(uuid.uuid4()),
                 referenId=str(q.id),
@@ -277,13 +305,14 @@ def process_questions_to_vector(request: QuestionListRequest):
 
 def generate_answer(request: AskRequest):
     """查詢 Qdrant 並產生回答（僅搜尋指定 Space）"""
-    ensure_collection()
     model = get_sentence_model()
 
     if model is None:
         raise HTTPException(status_code=503, detail="模型正在載入中，請稍後再試")
+    if not ensure_collection(embedding_dimension(model)):
+        raise HTTPException(status_code=400, detail="找不到相關內容")
 
-    query_vector = model.encode(request.question).tolist()
+    query_vector = encode(model, request.question)
 
     extra = []
     if request.type:
@@ -337,10 +366,45 @@ def generate_answer(request: AskRequest):
     }
 
 
+def search_knowledge(request: SearchRequest):
+    """只檢索、不生成：回傳指定 Space 內的命中結果與相似度分數"""
+    model = get_sentence_model()
+
+    if model is None:
+        raise HTTPException(status_code=503, detail="模型正在載入中，請稍後再試")
+    if not ensure_collection(embedding_dimension(model)):
+        return {"hits": []}
+
+    extra = []
+    if request.type:
+        extra.append(models.FieldCondition(key="type", match=models.MatchValue(value=request.type)))
+
+    results = client.search(
+        collection_name=COLLECTION_NAME,
+        query_vector=encode(model, request.query),
+        limit=request.limit,
+        with_payload=True,
+        query_filter=space_filter(request.space_id, *extra)
+    )
+
+    return {
+        "hits": [
+            {
+                "id": str(r.id),
+                "reference_id": (r.payload or {}).get("referenId"),
+                "type": (r.payload or {}).get("type"),
+                "question": (r.payload or {}).get("question", ""),
+                "answer": (r.payload or {}).get("answer", ""),
+                "score": r.score,
+            }
+            for r in results
+        ]
+    }
+
+
 def delete_question_by_id(question_id: str, space_id: int):
     """刪除指定 Space 內的問題向量；其他 Space 的同 ID point 不受影響"""
-    ensure_collection()
-    if not find_points_in_space(space_id, [question_id]):
+    if not ensure_collection() or not find_points_in_space(space_id, [question_id]):
         raise HTTPException(status_code=404, detail=f"找不到 ID: {question_id}")
     client.delete(
         collection_name=COLLECTION_NAME,
@@ -379,6 +443,11 @@ def api_ask(request: AskRequest):
     return generate_answer(request)
 
 
+@app.post("/search", dependencies=[Depends(require_internal_key)])
+def api_search(request: SearchRequest):
+    return search_knowledge(request)
+
+
 @app.delete("/questions/{question_id}", dependencies=[Depends(require_internal_key)])
 def api_delete_question(question_id: str, space_id: int = Query(gt=0)):
     return delete_question_by_id(question_id, space_id)
@@ -400,7 +469,8 @@ def get_model_status():
 @app.get("/questions", dependencies=[Depends(require_internal_key)])
 def list_questions(space_id: int = Query(gt=0), limit: int = Query(default=100, gt=0, le=1000)):
     """列出指定 Space 的問題"""
-    ensure_collection()
+    if not ensure_collection():
+        return {"status": "success", "count": 0, "questions": []}
     result = client.scroll(
         collection_name=COLLECTION_NAME,
         scroll_filter=space_filter(space_id),

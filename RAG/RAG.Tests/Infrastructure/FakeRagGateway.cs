@@ -18,11 +18,17 @@ namespace RAG.Tests.Infrastructure
 
         public bool FailDelete { get; set; }
 
+        /// <summary>
+        /// SearchAsync 依 space 回傳的命中結果
+        /// </summary>
+        public ConcurrentDictionary<int, List<RagSearchHit>> SearchHits { get; } = new();
+
         public void Reset()
         {
             Calls.Clear();
             FailUpsert = false;
             FailDelete = false;
+            SearchHits.Clear();
         }
 
         public Task<string> UpsertQuestionAsync(RagScope scope, ToVectorDto.QuestionRequest question, CancellationToken cancellationToken = default)
@@ -37,6 +43,13 @@ namespace RAG.Tests.Infrastructure
         {
             Calls.Enqueue(new Call("ask", scope.SpaceId, null, null, question));
             return Task.FromResult(new ChatReponseDto { Answer = $"answer-from-space-{scope.SpaceId}", Related = new List<string> { "related" } });
+        }
+
+        public Task<IReadOnlyList<RagSearchHit>> SearchAsync(RagScope scope, string query, int limit, string? type, CancellationToken cancellationToken = default)
+        {
+            Calls.Enqueue(new Call("search", scope.SpaceId, null, null, query));
+            IReadOnlyList<RagSearchHit> hits = SearchHits.TryGetValue(scope.SpaceId, out var list) ? list.Take(limit).ToList() : new List<RagSearchHit>();
+            return Task.FromResult(hits);
         }
 
         public Task DeleteQuestionAsync(RagScope scope, string vectorId, CancellationToken cancellationToken = default)

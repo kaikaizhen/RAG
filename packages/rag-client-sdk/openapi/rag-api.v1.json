@@ -380,6 +380,96 @@
         }
       }
     },
+    "/api/v1/Knowledge/search": {
+      "post": {
+        "tags": [
+          "知識檢索模組"
+        ],
+        "summary": "在目前 Space 的知識庫檢索（回傳證據與類似答案，不產生答案）",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeSearchParam"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeSearchParam"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeSearchParam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeSearchVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeSearchVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeSearchVM"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/QaType": {
       "get": {
         "tags": [
@@ -839,6 +929,107 @@
         }
       }
     },
+    "/api/v1/Skill/bundle": {
+      "get": {
+        "tags": [
+          "Skill / Workflow 功能模組"
+        ],
+        "summary": "取得目前 Space 的有效 Skill / Workflow 內容（受 token 預算限制，Workflow 優先）",
+        "parameters": [
+          {
+            "name": "tokenBudget",
+            "in": "query",
+            "description": "token 預算（預設與上限由伺服器設定）",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillBundleVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillBundleVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillBundleVM"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorVM"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/Skill/effective": {
       "get": {
         "tags": [
@@ -1136,6 +1327,11 @@
             "type": "string",
             "description": "解答",
             "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "知識狀態：Verified / Stale / Inferred / Superseded（未提供時新增為 Verified、更新時保留原值）",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -1295,6 +1491,129 @@
         },
         "additionalProperties": false
       },
+      "KnowledgeItemVM": {
+        "type": "object",
+        "properties": {
+          "questionID": {
+            "type": "integer",
+            "description": "知識（問題）編號",
+            "format": "int32"
+          },
+          "question": {
+            "type": "string",
+            "description": "問題",
+            "nullable": true
+          },
+          "answer": {
+            "type": "string",
+            "description": "答案",
+            "nullable": true
+          },
+          "score": {
+            "type": "number",
+            "description": "相似度分數（0-1）",
+            "format": "double"
+          },
+          "status": {
+            "type": "string",
+            "description": "知識狀態：Verified / Stale / Inferred",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KnowledgeSearchParam": {
+        "required": [
+          "query"
+        ],
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "查詢內容（1-2000 字元）",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "description": "問題種類編號（選填，限縮搜尋範圍）",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KnowledgeSearchVM": {
+        "type": "object",
+        "properties": {
+          "spaceID": {
+            "type": "integer",
+            "description": "Space 編號",
+            "format": "int32"
+          },
+          "spaceKey": {
+            "type": "string",
+            "description": "Space 識別字",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "grounded：有 Verified 證據；partial：只有 Stale / Inferred 證據；insufficient：沒有證據",
+            "nullable": true
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeItemVM"
+            },
+            "description": "可作為依據的知識（依分數排序；Stale / Inferred 可信度較低）",
+            "nullable": true
+          },
+          "similar": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeItemVM"
+            },
+            "description": "類似但分數不足的答案：僅供參考，不可當作依據",
+            "nullable": true
+          },
+          "notice": {
+            "type": "string",
+            "description": "給使用端 AI 的使用說明",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoadedArtifactVM": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "識別字",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "description": "版本",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "description": "來源：default 或 space:<key>",
+            "nullable": true
+          },
+          "content": {
+            "type": "string",
+            "description": "內容（Markdown）",
+            "nullable": true
+          },
+          "tokenEstimate": {
+            "type": "integer",
+            "description": "預估 token 數",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "LoginParam": {
         "required": [
           "account",
@@ -1388,6 +1707,46 @@
             "type": "string",
             "description": "聊天編號",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SkillBundleVM": {
+        "type": "object",
+        "properties": {
+          "spaceKey": {
+            "type": "string",
+            "description": "Space 識別字",
+            "nullable": true
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoadedArtifactVM"
+            },
+            "description": "已載入的 Skill（依順序：Default 在前、Space 擴充在後）",
+            "nullable": true
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/LoadedArtifactVM"
+          },
+          "omittedSkillIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "因 token 預算不足未載入的 Skill",
+            "nullable": true
+          },
+          "tokenEstimate": {
+            "type": "integer",
+            "description": "已載入內容的預估 token 數",
+            "format": "int32"
+          },
+          "tokenBudget": {
+            "type": "integer",
+            "description": "本次使用的 token 預算",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -1522,6 +1881,11 @@
           "answer": {
             "type": "string",
             "description": "解答",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "知識狀態：Verified / Stale / Inferred / Superseded（未提供時新增為 Verified、更新時保留原值）",
             "nullable": true
           }
         },

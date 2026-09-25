@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using RAG.Authentication;
 using RAG.Commons.Options;
+using RAG.Context;
 using RAG.Models.Entities;
 using RAG.Repositories;
 using RAG.Repositories.Interfaces;
@@ -33,6 +34,7 @@ namespace RAG.Extensions
                     .AddNativeJwtAuthentication(configuration)
                     .AddSpaceRuntime()
                     .AddSkillRuntime(configuration, env)
+                    .AddContextRuntime(configuration)
                     .AddToolRuntime(configuration, env)
                     .AddMapping()
                     .AddService()

@@ -22,6 +22,8 @@ namespace RAG.Commons.Options
         /// </summary>
         public string AskUrl { get; set; } = "/ask";
 
+        public string SearchUrl { get; set; } = "/search";
+
         /// <summary>
         /// 刪除問題
         /// </summary>

@@ -11,6 +11,9 @@ export {
   type ChatAnswer,
   type ChatSummary,
   type ChatLogEntry,
+  type SkillBundle,
+  type KnowledgeSearchResult,
+  type KnowledgeItem,
 } from './client.js';
 export {
   RagApiError,

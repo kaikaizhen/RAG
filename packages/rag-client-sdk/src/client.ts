@@ -11,6 +11,9 @@ export type EffectiveSkills = Schemas['EffectiveSkillVM'];
 export type ChatAnswer = Schemas['ChatVM'];
 export type ChatSummary = Schemas['GetChatHistoryVM'];
 export type ChatLogEntry = Schemas['GetChatLogHistoryVM'];
+export type SkillBundle = Schemas['SkillBundleVM'];
+export type KnowledgeSearchResult = Schemas['KnowledgeSearchVM'];
+export type KnowledgeItem = Schemas['KnowledgeItemVM'];
 
 export const API_VERSION = 'v1';
 export const SPACE_HINT_HEADER = 'X-Space-Id';
@@ -72,6 +75,23 @@ export class RagClient {
   readonly skills = {
     /** 目前 Space 的有效 Skill / Workflow metadata（不含內容） */
     effective: () => this.cached(`space:${this.selectedSpaceId ?? 'auto'}:skills`, () => this.request<EffectiveSkills>('GET', '/Skill/effective')),
+    /** 目前 Space 的有效 Skill / Workflow 內容，受 token 預算限制（未指定時使用伺服器預設） */
+    bundle: (tokenBudget?: number) => {
+      if (tokenBudget !== undefined && !(Number.isInteger(tokenBudget) && tokenBudget > 0)) {
+        return Promise.reject(new RagValidationError('tokenBudget must be a positive integer'));
+      }
+      const query = tokenBudget === undefined ? '' : `?tokenBudget=${tokenBudget}`;
+      return this.cached(`space:${this.selectedSpaceId ?? 'auto'}:bundle:${tokenBudget ?? 'default'}`, () => this.request<SkillBundle>('GET', `/Skill/bundle${query}`));
+    },
+  };
+
+  readonly knowledge = {
+    /**
+     * 在目前 Space 的知識庫檢索（只檢索、不產生答案）。
+     * status：grounded（有 Verified 證據）/ partial（僅 Stale、Inferred）/ insufficient（無證據）；similar 不可當作依據。
+     */
+    search: (query: string, options: { type?: string } = {}) =>
+      this.request<KnowledgeSearchResult>('POST', '/Knowledge/search', { body: { query, type: options.type ?? null } }),
   };
 
   readonly chat = {

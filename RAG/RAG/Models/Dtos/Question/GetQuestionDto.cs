@@ -37,5 +37,10 @@
         /// 更新時間
         /// </summary>
         public DateTime? UpdateAt { get; set; }
+
+        /// <summary>
+        /// 知識狀態
+        /// </summary>
+        public string Status { get; set; } = string.Empty;
     }
 }

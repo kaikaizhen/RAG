@@ -1,4 +1,4 @@
-using RAG.Rag;
+using RAG.Context;
 using RAG.SpaceRuntime;
 using RAG.ToolRuntime;
 
@@ -11,7 +11,7 @@ namespace RAG.Tools
     {
         public static readonly CapabilityDefinition Capability = new(
             Id: "knowledge.search",
-            Description: "在目前 Space 的知識庫中搜尋並回傳答案與相關問題",
+            Description: "在目前 Space 的知識庫中檢索證據（只檢索、不生成答案）",
             Kind: CapabilityKind.Read,
             RequiredPermission: SpacePermissions.KnowledgeRead,
             Timeout: TimeSpan.FromSeconds(30),
@@ -21,13 +21,11 @@ namespace RAG.Tools
                 new ToolArgument("type", ToolArgumentType.String, Required: false, MaxLength: 20),
             });
 
-        private readonly IRagGateway _ragGateway;
-        private readonly IRagScopeFactory _ragScopeFactory;
+        private readonly IKnowledgeSearchService _knowledgeSearch;
 
-        public KnowledgeSearchAdapter(IRagGateway ragGateway, IRagScopeFactory ragScopeFactory)
+        public KnowledgeSearchAdapter(IKnowledgeSearchService knowledgeSearch)
         {
-            _ragGateway = ragGateway;
-            _ragScopeFactory = ragScopeFactory;
+            _knowledgeSearch = knowledgeSearch;
         }
 
         public CapabilityDefinition Definition => Capability;
@@ -37,9 +35,8 @@ namespace RAG.Tools
             var query = (string)invocation.Arguments["query"];
             invocation.Arguments.TryGetValue("type", out var type);
 
-            var result = await _ragGateway.AskAsync(_ragScopeFactory.Create(invocation.Context), query, type as string, cancellationToken);
-
-            return new { answer = result.Answer, confidence = result.Confidence, related = result.Related };
+            // 與 /api/v1/Knowledge/search 相同的證據規則（MySQL 回查、Superseded 排除、門檻分類）
+            return await _knowledgeSearch.SearchAsync(invocation.Context, query, type as string, cancellationToken);
         }
     }
 }

@@ -20,6 +20,11 @@ namespace RAG.Rag
         Task<ChatReponseDto> AskAsync(RagScope scope, string question, string? type, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// 只檢索、不生成：回傳 scope 內的命中結果與相似度分數
+        /// </summary>
+        Task<IReadOnlyList<RagSearchHit>> SearchAsync(RagScope scope, string query, int limit, string? type, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// 刪除 scope 內的向量；向量不存在時視為已刪除（可重試）
         /// </summary>
         Task DeleteQuestionAsync(RagScope scope, string vectorId, CancellationToken cancellationToken = default);

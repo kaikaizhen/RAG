@@ -77,6 +77,10 @@ public partial class WenDaHubContext
 
         modelBuilder.Entity<Questions>(entity =>
         {
+            // Phase 6：知識狀態（既有資料以預設值 Verified backfill）
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue(KnowledgeStatus.Verified);
+            entity.ToTable(t => t.HasCheckConstraint("ck_questions_status", "`Status` IN ('Verified','Stale','Inferred','Superseded')"));
+
             entity.Property(e => e.SpaceID).HasColumnType("int(11)");
             entity.HasIndex(e => new { e.SpaceID, e.UserID }, "ix_questions_space_user");
             entity.HasOne(d => d.Space).WithMany()

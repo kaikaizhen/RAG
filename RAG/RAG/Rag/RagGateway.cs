@@ -51,6 +51,19 @@ namespace RAG.Rag
                 ?? throw new HttpException(HttpStatusCode.InternalServerError, "Ask API Error");
         }
 
+        public async Task<IReadOnlyList<RagSearchHit>> SearchAsync(RagScope scope, string query, int limit, string? type, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(scope);
+
+            var content = new { space_id = scope.SpaceId, query, limit, type };
+
+            using var response = await SendAsync(HttpMethod.Post, $"{_ragOption.BaseUrl}{_ragOption.SearchUrl}", content, cancellationToken);
+            if (!response.IsSuccessStatusCode) throw new HttpException(HttpStatusCode.InternalServerError, "Search API Error");
+
+            var result = JsonConvert.DeserializeObject<RagSearchResponse>(await response.Content.ReadAsStringAsync(cancellationToken));
+            return result?.Hits ?? throw new HttpException(HttpStatusCode.InternalServerError, "Search API Error");
+        }
+
         public async Task DeleteQuestionAsync(RagScope scope, string vectorId, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(scope);

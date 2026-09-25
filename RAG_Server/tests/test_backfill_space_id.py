@@ -18,6 +18,7 @@ MISSING = "44444444-4444-4444-4444-444444444444"
 @pytest.fixture(autouse=True)
 def legacy_points(monkeypatch):
     monkeypatch.setattr(tool, "connect", lambda: main.client)
+    monkeypatch.setenv("QDRANT_COLLECTION", main.COLLECTION_NAME)
     if main.COLLECTION_NAME in [c.name for c in main.client.get_collections().collections]:
         main.client.delete_collection(main.COLLECTION_NAME)
     main.client.create_collection(main.COLLECTION_NAME, vectors_config=models.VectorParams(size=4, distance=models.Distance.COSINE))

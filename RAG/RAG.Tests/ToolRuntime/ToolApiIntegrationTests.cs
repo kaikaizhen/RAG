@@ -80,7 +80,7 @@ namespace RAG.Tests.ToolRuntime
             Assert.Equal(ToolInvocationStatus.Succeeded, allowed.Status);
             Assert.Equal(ToolInvocationStatus.Forbidden, denied.Status);
             var call = Assert.Single(_factory.RagGateway.Calls);
-            Assert.Equal(("ask", SeedData.DefaultSpace, "請假流程"), (call.Operation, call.SpaceId, call.AskQuestion));
+            Assert.Equal(("search", SeedData.DefaultSpace, "請假流程"), (call.Operation, call.SpaceId, call.AskQuestion));
         }
 
         private sealed record Capability(string Id, string Description, string Kind);

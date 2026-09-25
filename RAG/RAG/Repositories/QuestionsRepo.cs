@@ -38,6 +38,14 @@ namespace RAG.Repositories
             return await query.FirstOrDefaultAsync();
         }
 
+        public async Task<List<Questions>> GetByIdsInSpaceAsync(IEnumerable<int> ids, int spaceId)
+        {
+            var idList = ids.Distinct().ToList();
+            if (idList.Count == 0) return new List<Questions>();
+
+            return await QueryAsync(filter: q => idList.Contains(q.ID) && q.SpaceID == spaceId).ToListAsync();
+        }
+
         public async Task<bool> AnyByQaItemTypeIdsAsync(IEnumerable<int> qaItemTypeIds)
         {
             var ids = qaItemTypeIds.ToList();

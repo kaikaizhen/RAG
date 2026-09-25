@@ -69,6 +69,7 @@ namespace RAG.Services
             var entity = _mapper.Map<Questions>(dto);
             entity.UserID = context.Space.UserId;
             entity.SpaceID = context.Space.SpaceId;
+            entity.Status = ValidateStatus(dto.Status) ?? KnowledgeStatus.Verified;
 
             await _questionsRepo.TransactionAsync();
             await _questionsRepo.AddAsync(entity);
@@ -99,6 +100,7 @@ namespace RAG.Services
             entity.UserID = question.UserID;
             entity.SpaceID = question.SpaceID;
             entity.CreateAt = question.CreateAt;
+            entity.Status = ValidateStatus(dto.Status) ?? question.Status;
 
             // 以新內容覆寫同一個 point（原實作誤用舊內容向量化）
             entity.VectorID = await _ragGateway.UpsertQuestionAsync(_ragScopeFactory.Create(context), ToVectorRequest(entity, qaTypeId, question.VectorID));
@@ -131,6 +133,12 @@ namespace RAG.Services
             if (Id is not int typeId) throw new HttpException((HttpStatusCode)400,"使用種類查詢功能，請帶入Id");
 
             return await _questionsRepo.GetByTypeIdAsync(space.UserId, space.SpaceId, typeId);
+        }
+
+        private static string? ValidateStatus(string? status)
+        {
+            if (status is null) return null;
+            return KnowledgeStatus.IsValid(status) ? status : throw new HttpException(HttpStatusCode.BadRequest, "不支援的知識狀態");
         }
 
         private async Task<int> GetQaTypeIdAsync(int qaItemTypeId)
