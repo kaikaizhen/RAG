@@ -40,6 +40,7 @@
     <ProjectReference Include="..\..\docs\Library\Library\Library.csproj" />
     <ProjectReference Include="..\RAG.SpaceRuntime\RAG.SpaceRuntime.csproj" />
     <ProjectReference Include="..\RAG.SkillRuntime\RAG.SkillRuntime.csproj" />
+    <ProjectReference Include="..\RAG.ToolRuntime\RAG.ToolRuntime.csproj" />
   </ItemGroup>
 
 </Project>

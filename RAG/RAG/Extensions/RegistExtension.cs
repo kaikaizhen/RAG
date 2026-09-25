@@ -8,6 +8,7 @@ using RAG.Repositories.Interfaces;
 using RAG.Services;
 using RAG.Services.Interfaces;
 using RAG.Skills;
+using RAG.Tools;
 using RAG.Spaces;
 
 
@@ -32,6 +33,7 @@ namespace RAG.Extensions
                     .AddNativeJwtAuthentication(configuration)
                     .AddSpaceRuntime()
                     .AddSkillRuntime(configuration, env)
+                    .AddToolRuntime(configuration, env)
                     .AddMapping()
                     .AddService()
                     .AddRepo();
