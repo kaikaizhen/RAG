@@ -1,6 +1,5 @@
-﻿using Asp.Versioning;
+using Asp.Versioning;
 using AutoMapper;
-using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Models.Dtos.Auth;
@@ -17,17 +16,14 @@ namespace RAG.Controllers
     [Tags("驗證功能模組")]
     public class AuthController : ControllerBase
     {
-        private readonly IApiExecutorHandler _apiExecutor;
         private readonly IMapper _mapper;
         private readonly IAuthService _authService;
 
         public AuthController(
-            IApiExecutorHandler apiExecutor,
             IMapper mapper,
             IAuthService authService
         )
         {
-            _apiExecutor = apiExecutor;
             _mapper = mapper;
             _authService = authService;
         }
@@ -43,16 +39,10 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] LoginParam request)
         {
-            return await _apiExecutor.RunAsync(async (request) =>
-            {
-                var loginDto = _mapper.Map<LoginDto>(request);
-                var userInfo = await _authService.LoginAsync(loginDto);
+            var loginDto = _mapper.Map<LoginDto>(request);
+            var userInfo = await _authService.LoginAsync(loginDto);
 
-                return _mapper.Map<LoginVM>(userInfo);
-            },
-            verify:false,
-            parameter: request
-            );
+            return Ok(_mapper.Map<LoginVM>(userInfo));
         }
 
         /// <summary>
@@ -66,15 +56,9 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Refresh([FromBody] RefreshParam request)
         {
-            return await _apiExecutor.RunAsync(async (request) =>
-            {
-                var session = await _authService.RefreshAsync(request.RefreshToken);
+            var session = await _authService.RefreshAsync(request.RefreshToken);
 
-                return _mapper.Map<LoginVM>(session);
-            },
-            verify:false,
-            parameter: request
-            );
+            return Ok(_mapper.Map<LoginVM>(session));
         }
     }
 }

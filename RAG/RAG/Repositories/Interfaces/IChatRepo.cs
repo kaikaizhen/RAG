@@ -1,9 +1,9 @@
-﻿using Library.Repo.Interfaces;
+using Library.Repo.Interfaces;
 using RAG.Models.Entities;
 
 namespace RAG.Repositories.Interfaces
 {
-    public interface IChatRepo:IBaseRepo<WenDaHubContext,ChatHeader>
+    public interface IChatRepo:IRagRepo<ChatHeader>
     {
         /// <summary>
         /// 查詢聊天資訊(僅限擁有者且屬於指定 Space)
@@ -21,19 +21,5 @@ namespace RAG.Repositories.Interfaces
         /// <param name="spaceId">Space 編號</param>
         /// <returns></returns>
         Task<List<ChatHeader>> GetByUserIdAsync(int Id, int spaceId);
-
-        /// <summary>
-        /// 新增聊天資訊
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        Task AddAsync(ChatHeader entity);
-
-        /// <summary>
-        /// 刪除聊天資訊
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        Task DeleteAsync(ChatHeader entity);
     }
 }

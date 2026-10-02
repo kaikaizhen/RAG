@@ -55,3 +55,6 @@ qdrant_storage/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# docs/ 為本機文件（規劃、校準資料、含資料庫匯出），不進版控
+/docs/

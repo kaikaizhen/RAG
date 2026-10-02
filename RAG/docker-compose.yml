@@ -4,10 +4,9 @@ services:
   rag:
     build:
       context: .              # Dockerfile 所在目錄
-      network: host           # 若建構過程需要使用主機網路
-      args:
-        # 私有 NuGet 來源，請於 .env 設定 NUGET_PRIVATE_FEED
-        NUGET_PRIVATE_FEED: ${NUGET_PRIVATE_FEED}
+      additional_contexts:
+        # 共用 Library 原始碼（不經 NuGet）；路徑於 .env 以 LIBRARY_PATH 設定
+        library: ${LIBRARY_PATH:-../../Library}
     image: rag                # 建構後的映像名稱
     container_name: rag       # 容器名稱
     ports:
@@ -18,4 +17,7 @@ services:
       RagOption__BaseUrl: ${RAG_SERVER_BASE_URL}
       # 與 RAG_Server 的 INTERNAL_API_KEY 相同；只放在未納版控的 .env
       RagOption__InternalApiKey: ${RAG_INTERNAL_API_KEY}
+      # 與 RAG_Server 共用同一組校準值（同名 env 由 .env 同時注入兩個服務）
+      ContextRuntime__EvidenceScoreThreshold: ${DIRECT_MATCH_THRESHOLD:-0.70}
+      ContextRuntime__SimilarScoreThreshold: ${SIMILAR_SCORE_THRESHOLD:-0.50}
     restart: unless-stopped   # 自動重啟策略

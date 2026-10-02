@@ -4,6 +4,147 @@
  */
 
 export interface paths {
+    "/api/v1/Auth/Login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LoginParam"];
+                    "text/json": components["schemas"]["LoginParam"];
+                    "application/*+json": components["schemas"]["LoginParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LoginVM"];
+                        "application/json": components["schemas"]["LoginVM"];
+                        "text/json": components["schemas"]["LoginVM"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Auth/Refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RefreshParam"];
+                    "text/json": components["schemas"]["RefreshParam"];
+                    "application/*+json": components["schemas"]["RefreshParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LoginVM"];
+                        "application/json": components["schemas"]["LoginVM"];
+                        "text/json": components["schemas"]["LoginVM"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Capability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/Chat": {
         parameters: {
             query?: never;
@@ -11,7 +152,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 查詢目前使用者的聊天室清單 */
         get: {
             parameters: {
                 query?: never;
@@ -35,7 +175,6 @@ export interface paths {
             };
         };
         put?: never;
-        /** 回應 */
         post: {
             parameters: {
                 query?: never;
@@ -43,7 +182,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["SendChatParam"];
                     "text/json": components["schemas"]["SendChatParam"];
@@ -97,7 +236,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["SendChatParam"];
                     "text/json": components["schemas"]["SendChatParam"];
@@ -127,7 +266,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 查詢聊天室紀錄 */
         get: {
             parameters: {
                 query?: never;
@@ -205,126 +343,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/User/{Id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 查詢使用者資訊 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    Id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        /** 刪除使用者 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    Id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/User": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** 更新使用者 */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["UpdateUserParam"];
-                    "text/json": components["schemas"]["UpdateUserParam"];
-                    "application/*+json": components["schemas"]["UpdateUserParam"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        /** 新增使用者 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["CreateUserParam"];
-                    "text/json": components["schemas"]["CreateUserParam"];
-                    "application/*+json": components["schemas"]["CreateUserParam"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/Knowledge/search": {
         parameters: {
             query?: never;
@@ -334,7 +352,6 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 在目前 Space 的知識庫檢索（回傳證據與類似答案，不產生答案） */
         post: {
             parameters: {
                 query?: never;
@@ -342,7 +359,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["KnowledgeSearchParam"];
                     "text/json": components["schemas"]["KnowledgeSearchParam"];
@@ -398,7 +415,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 查詢問題種類列表(狀態為啟用) */
         get: {
             parameters: {
                 query?: never;
@@ -417,7 +433,6 @@ export interface paths {
                 };
             };
         };
-        /** 更新問題種類 */
         put: {
             parameters: {
                 query?: never;
@@ -425,7 +440,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["UpdateQaTypeParam"];
                     "text/json": components["schemas"]["UpdateQaTypeParam"];
@@ -442,7 +457,6 @@ export interface paths {
                 };
             };
         };
-        /** 新增問題種類 */
         post: {
             parameters: {
                 query?: never;
@@ -450,7 +464,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["CreateQaTypeParam"];
                     "text/json": components["schemas"]["CreateQaTypeParam"];
@@ -483,13 +497,12 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** 刪除問題種類 */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    Id: number;
+                    Id: number | string;
                 };
                 cookie?: never;
             };
@@ -516,7 +529,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 查詢問題種類細項列表(狀態為啟用) */
         get: {
             parameters: {
                 query?: never;
@@ -535,7 +547,6 @@ export interface paths {
                 };
             };
         };
-        /** 更新問題種類細項 */
         put: {
             parameters: {
                 query?: never;
@@ -543,7 +554,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["UpdateQaTypeItemParam"];
                     "text/json": components["schemas"]["UpdateQaTypeItemParam"];
@@ -560,7 +571,6 @@ export interface paths {
                 };
             };
         };
-        /** 新增問題種類細項 */
         post: {
             parameters: {
                 query?: never;
@@ -568,7 +578,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["CreateQaTypeItemParam"];
                     "text/json": components["schemas"]["CreateQaTypeItemParam"];
@@ -601,13 +611,12 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** 刪除問題種類細項 */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    Id: number;
+                    Id: number | string;
                 };
                 cookie?: never;
             };
@@ -634,13 +643,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 查詢問題列表 */
         get: {
             parameters: {
                 query?: {
-                    /** @description 種類編號 */
-                    Id?: number;
-                    /** @description 查詢種類 */
+                    Id?: number | string;
                     Type?: components["schemas"]["QuestionEnum"];
                 };
                 header?: never;
@@ -658,7 +664,6 @@ export interface paths {
                 };
             };
         };
-        /** 更新問題 */
         put: {
             parameters: {
                 query?: never;
@@ -666,7 +671,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["UpdateQuestionParam"];
                     "text/json": components["schemas"]["UpdateQuestionParam"];
@@ -683,7 +688,6 @@ export interface paths {
                 };
             };
         };
-        /** 新增問題 */
         post: {
             parameters: {
                 query?: never;
@@ -691,7 +695,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": components["schemas"]["CreateQuestionParam"];
                     "text/json": components["schemas"]["CreateQuestionParam"];
@@ -724,13 +728,12 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** 刪除問題 */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    Id: number;
+                    Id: number | string;
                 };
                 cookie?: never;
             };
@@ -750,116 +753,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/Auth/Login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 登入 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["LoginParam"];
-                    "text/json": components["schemas"]["LoginParam"];
-                    "application/*+json": components["schemas"]["LoginParam"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["LoginVM"];
-                        "application/json": components["schemas"]["LoginVM"];
-                        "text/json": components["schemas"]["LoginVM"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ErrorVM"];
-                        "application/json": components["schemas"]["ErrorVM"];
-                        "text/json": components["schemas"]["ErrorVM"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/Auth/Refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 以 RefreshToken 換發新的 AccessToken / RefreshToken */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["RefreshParam"];
-                    "text/json": components["schemas"]["RefreshParam"];
-                    "application/*+json": components["schemas"]["RefreshParam"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["LoginVM"];
-                        "application/json": components["schemas"]["LoginVM"];
-                        "text/json": components["schemas"]["LoginVM"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ErrorVM"];
-                        "application/json": components["schemas"]["ErrorVM"];
-                        "text/json": components["schemas"]["ErrorVM"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/Skill/bundle": {
         parameters: {
             query?: never;
@@ -867,12 +760,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 取得目前 Space 的有效 Skill / Workflow 內容（受 token 預算限制，Workflow 優先） */
         get: {
             parameters: {
                 query?: {
-                    /** @description token 預算（預設與上限由伺服器設定） */
-                    tokenBudget?: number;
+                    tokenBudget?: number | string;
                 };
                 header?: never;
                 path?: never;
@@ -941,7 +832,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 查詢目前 Space 的有效 Skill / Workflow（僅 metadata，不含內容） */
         get: {
             parameters: {
                 query?: never;
@@ -1001,7 +891,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 查詢目前使用者可使用的 Space 清單 */
         get: {
             parameters: {
                 query?: never;
@@ -1039,7 +928,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 解析目前 request 的 Space（以 X-Space-Id header 作為選擇提示） */
         get: {
             parameters: {
                 query?: never;
@@ -1081,19 +969,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/Capability": {
+    "/api/v1/User/{Id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** 查詢目前 Space 可使用的 capability */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    Id: number | string;
+                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -1109,6 +998,87 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    Id: number | string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/User": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateUserParam"];
+                    "text/json": components["schemas"]["UpdateUserParam"];
+                    "application/*+json": components["schemas"]["UpdateUserParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateUserParam"];
+                    "text/json": components["schemas"]["CreateUserParam"];
+                    "application/*+json": components["schemas"]["CreateUserParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1120,325 +1090,178 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         ArtifactVM: {
-            /** @description 識別字 */
-            id?: string | null;
-            /** @description 版本 */
-            version?: string | null;
-            /** @description 名稱 */
-            name?: string | null;
-            /** @description 來源：default 或 space:<key> */
-            source?: string | null;
-            /**
-             * Format: int32
-             * @description 預估 token 數
-             */
-            tokenEstimate?: number;
+            id?: string;
+            version?: string;
+            name?: string;
+            source?: string;
+            /** Format: int32 */
+            tokenEstimate?: number | string;
         };
         ChatVM: {
-            /** @description 模型產生的最終回答 */
-            answer?: string | null;
-            /** @description 相關問題（模型檢索出的類似問題） */
-            related?: string[] | null;
+            answer?: string;
+            related?: string[];
         };
         CreateQaTypeItemParam: {
-            /**
-             * Format: int32
-             * @description 問題種類編號
-             */
-            qaTypeID: number;
-            /** @description 問題種類細項名稱(中文) */
-            nameZh?: string | null;
-            /** @description 問題種類細項名稱(英文) */
-            nameEn?: string | null;
-            /** @description 問題種類細項名稱(其他語系) */
-            nameOther?: string | null;
+            /** Format: int32 */
+            qaTypeID: number | string;
+            nameZh?: null | string;
+            nameEn?: null | string;
+            nameOther?: null | string;
         };
         CreateQaTypeParam: {
-            /** @description 問題種類名稱(中文) */
-            nameZh?: string | null;
-            /** @description 問題種類名稱(英文) */
-            nameEn?: string | null;
-            /** @description 問題種類名稱(其他語系) */
-            nameOther?: string | null;
+            nameZh?: null | string;
+            nameEn?: null | string;
+            nameOther?: null | string;
         };
         CreateQuestionParam: {
-            /**
-             * Format: int32
-             * @description 問題種類細項編號
-             */
-            qaItemTypeID: number;
-            /** @description 問題 */
-            question: string | null;
-            /** @description 解答 */
-            answer: string | null;
-            /** @description 知識狀態：Verified / Stale / Inferred / Superseded（未提供時新增為 Verified、更新時保留原值） */
-            status?: string | null;
+            /** Format: int32 */
+            qaItemTypeID: number | string;
+            question: string;
+            answer: string;
+            status?: null | string;
         };
         CreateUserParam: {
-            /** @description 帳號 */
-            account: string | null;
-            /** @description 密碼 */
-            password: string | null;
-            /** @description 名稱(中文) */
-            nameZh?: string | null;
-            /** @description 名稱(英文) */
-            nameEn?: string | null;
-            /** @description 名稱(其他語系) */
-            nameOther?: string | null;
+            account: string;
+            password: string;
+            nameZh?: null | string;
+            nameEn?: null | string;
+            nameOther?: null | string;
         };
         CurrentSpaceVM: {
-            /**
-             * Format: int32
-             * @description Space 編號
-             */
-            spaceID?: number;
-            /** @description Space 識別字 */
-            key?: string | null;
-            /** @description Space 名稱 */
-            name?: string | null;
-            /** @description 角色 */
-            role?: string | null;
-            /** @description 權限 */
-            permissions?: string[] | null;
-            /** @description Repository（未選定為 null） */
-            repositoryID?: string | null;
-            /** @description Project（未選定為 null） */
-            projectID?: string | null;
+            /** Format: int32 */
+            spaceID?: number | string;
+            key?: string;
+            name?: string;
+            role?: string;
+            permissions?: string[];
+            repositoryID?: null | string;
+            projectID?: null | string;
         };
         EffectiveSkillVM: {
-            /** @description Space 識別字 */
-            spaceKey?: string | null;
-            /** @description 有效 Skill（依載入順序：Default 在前、Space 擴充在後） */
-            skills?: components["schemas"]["ArtifactVM"][] | null;
-            workflow?: components["schemas"]["ArtifactVM"];
-            /**
-             * Format: int32
-             * @description 預估 token 數
-             */
-            tokenEstimate?: number;
+            spaceKey?: string;
+            skills?: components["schemas"]["ArtifactVM"][];
+            workflow?: null | components["schemas"]["ArtifactVM"];
+            /** Format: int32 */
+            tokenEstimate?: number | string;
         };
-        /** @description 統一錯誤回應（401 / 403 / 404 / 409 / 5xx） */
         ErrorVM: {
-            /** @description 錯誤訊息 */
-            error?: string | null;
+            error?: string;
         };
         GetChatHistoryVM: {
-            /** @description 聊天室編號 */
-            id?: string | null;
-            /** @description 聊天室名稱 */
-            name?: string | null;
+            id?: string;
+            name?: string;
         };
         GetChatLogHistoryVM: {
-            /** @description 問題 */
-            questions?: string | null;
-            /** @description 回答 */
-            answer?: string | null;
-            /**
-             * Format: date-time
-             * @description 創建時間
-             */
+            questions?: string;
+            answer?: string;
+            /** Format: date-time */
             createAt?: string;
         };
         KnowledgeItemVM: {
-            /**
-             * Format: int32
-             * @description 知識（問題）編號
-             */
-            questionID?: number;
-            /** @description 問題 */
-            question?: string | null;
-            /** @description 答案 */
-            answer?: string | null;
-            /**
-             * Format: double
-             * @description 相似度分數（0-1）
-             */
-            score?: number;
-            /** @description 知識狀態：Verified / Stale / Inferred */
-            status?: string | null;
+            /** Format: int32 */
+            questionID?: number | string;
+            question?: string;
+            answer?: string;
+            /** Format: double */
+            score?: number | string;
+            status?: string;
         };
         KnowledgeSearchParam: {
-            /** @description 查詢內容（1-2000 字元） */
-            query: string | null;
-            /** @description 問題種類編號（選填，限縮搜尋範圍） */
-            type?: string | null;
+            query: string;
+            type?: null | string;
         };
         KnowledgeSearchVM: {
-            /**
-             * Format: int32
-             * @description Space 編號
-             */
-            spaceID?: number;
-            /** @description Space 識別字 */
-            spaceKey?: string | null;
-            /** @description grounded：有 Verified 證據；partial：只有 Stale / Inferred 證據；insufficient：沒有證據 */
-            status?: string | null;
-            /** @description 可作為依據的知識（依分數排序；Stale / Inferred 可信度較低） */
-            evidence?: components["schemas"]["KnowledgeItemVM"][] | null;
-            /** @description 類似但分數不足的答案：僅供參考，不可當作依據 */
-            similar?: components["schemas"]["KnowledgeItemVM"][] | null;
-            /** @description 給使用端 AI 的使用說明 */
-            notice?: string | null;
+            /** Format: int32 */
+            spaceID?: number | string;
+            spaceKey?: string;
+            status?: string;
+            evidence?: components["schemas"]["KnowledgeItemVM"][];
+            similar?: components["schemas"]["KnowledgeItemVM"][];
+            notice?: string;
         };
         LoadedArtifactVM: {
-            /** @description 識別字 */
-            id?: string | null;
-            /** @description 版本 */
-            version?: string | null;
-            /** @description 來源：default 或 space:<key> */
-            source?: string | null;
-            /** @description 內容（Markdown） */
-            content?: string | null;
-            /**
-             * Format: int32
-             * @description 預估 token 數
-             */
-            tokenEstimate?: number;
+            id?: string;
+            version?: string;
+            source?: string;
+            content?: string;
+            /** Format: int32 */
+            tokenEstimate?: number | string;
         };
         LoginParam: {
-            /** @description 帳號 */
-            account: string | null;
-            /** @description 密碼 */
-            password: string | null;
+            account: string;
+            password: string;
         };
         LoginVM: {
-            /**
-             * Format: int32
-             * @description 使用者編號
-             */
-            userID?: number;
-            /** @description 名稱 */
-            name?: string | null;
-            /** @description 短期Token */
-            accessToken?: string | null;
-            /** @description 長期Token */
-            refreshToken?: string | null;
-            /** @description 是否有管理權限 */
-            manage?: string | null;
+            /** Format: int32 */
+            userID?: number | string;
+            name?: string;
+            accessToken?: string;
+            refreshToken?: string;
+            manage?: string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        QuestionEnum: 0 | 1;
+        QuestionEnum: number;
         RefreshParam: {
-            /** @description 登入時取得的 RefreshToken */
-            refreshToken: string | null;
+            refreshToken: string;
         };
         SendChatParam: {
-            /** @description 問題描述 */
-            question: string | null;
-            /** @description 搜尋範圍 */
-            type?: string | null;
-            /** @description 聊天編號 */
-            chatID?: string | null;
+            question: string;
+            type?: null | string;
+            chatID?: null | string;
         };
         SkillBundleVM: {
-            /** @description Space 識別字 */
-            spaceKey?: string | null;
-            /** @description 已載入的 Skill（依順序：Default 在前、Space 擴充在後） */
-            skills?: components["schemas"]["LoadedArtifactVM"][] | null;
-            workflow?: components["schemas"]["LoadedArtifactVM"];
-            /** @description 因 token 預算不足未載入的 Skill */
-            omittedSkillIds?: string[] | null;
-            /**
-             * Format: int32
-             * @description 已載入內容的預估 token 數
-             */
-            tokenEstimate?: number;
-            /**
-             * Format: int32
-             * @description 本次使用的 token 預算
-             */
-            tokenBudget?: number;
+            spaceKey?: string;
+            skills?: components["schemas"]["LoadedArtifactVM"][];
+            workflow?: null | components["schemas"]["LoadedArtifactVM"];
+            omittedSkillIds?: string[];
+            /** Format: int32 */
+            tokenEstimate?: number | string;
+            /** Format: int32 */
+            tokenBudget?: number | string;
         };
         SpaceVM: {
-            /**
-             * Format: int32
-             * @description Space 編號
-             */
-            spaceID?: number;
-            /** @description Space 識別字 */
-            key?: string | null;
-            /** @description Space 名稱 */
-            name?: string | null;
-            /** @description 角色 */
-            role?: string | null;
-            /** @description 是否為預設 Space */
+            /** Format: int32 */
+            spaceID?: number | string;
+            key?: string;
+            name?: string;
+            role?: string;
             isDefault?: boolean;
         };
         UpdateQaTypeItemParam: {
-            /**
-             * Format: int32
-             * @description 問題種類細項編號
-             */
-            id: number;
-            /**
-             * Format: int32
-             * @description 問題種類編號
-             */
-            qaTypeID: number;
-            /** @description 問題種類細項名稱(中文) */
-            nameZh?: string | null;
-            /** @description 問題種類細項名稱(英文) */
-            nameEn?: string | null;
-            /** @description 問題種類細項名稱(其他語系) */
-            nameOther?: string | null;
-            /** @description 啟用狀態 */
+            /** Format: int32 */
+            id: number | string;
+            /** Format: int32 */
+            qaTypeID: number | string;
+            nameZh?: null | string;
+            nameEn?: null | string;
+            nameOther?: null | string;
             isActive?: boolean;
         };
         UpdateQaTypeParam: {
-            /**
-             * Format: int32
-             * @description 問題種類編號
-             */
-            id: number;
-            /** @description 問題種類名稱(中文) */
-            nameZh?: string | null;
-            /** @description 問題種類名稱(英文) */
-            nameEn?: string | null;
-            /** @description 問題種類名稱(其他語系) */
-            nameOther?: string | null;
-            /** @description 啟用狀態 */
+            /** Format: int32 */
+            id: number | string;
+            nameZh?: null | string;
+            nameEn?: null | string;
+            nameOther?: null | string;
             isActive: boolean;
         };
         UpdateQuestionParam: {
-            /**
-             * Format: int32
-             * @description 問題編號
-             */
-            id: number;
-            /**
-             * Format: int32
-             * @description 問題種類細項編號
-             */
-            qaItemTypeID: number;
-            /** @description 問題 */
-            question: string | null;
-            /** @description 解答 */
-            answer: string | null;
-            /** @description 知識狀態：Verified / Stale / Inferred / Superseded（未提供時新增為 Verified、更新時保留原值） */
-            status?: string | null;
+            /** Format: int32 */
+            id: number | string;
+            /** Format: int32 */
+            qaItemTypeID: number | string;
+            question: string;
+            answer: string;
+            status?: null | string;
         };
         UpdateUserParam: {
-            /**
-             * Format: int32
-             * @description 使用者唯一值
-             */
-            id: number;
-            /** @description 帳號 */
-            account: string | null;
-            /** @description 密碼 */
-            password: string | null;
-            /** @description 名稱(中文) */
-            nameZh?: string | null;
-            /** @description 名稱(英文) */
-            nameEn?: string | null;
-            /** @description 名稱(其他語系) */
-            nameOther?: string | null;
-            /** @description 管理層級 */
-            manage: string | null;
-            /** @description 帳號啟用狀態 */
+            /** Format: int32 */
+            id: number | string;
+            account: string;
+            password: string;
+            nameZh?: null | string;
+            nameEn?: null | string;
+            nameOther?: null | string;
+            manage: string;
             isActive?: boolean;
         };
     };

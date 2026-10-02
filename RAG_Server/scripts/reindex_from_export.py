@@ -19,7 +19,7 @@ import sys
 from collections import defaultdict
 from typing import Callable, Dict, List
 
-import httpx
+import requests
 
 REQUIRED = ("id", "space_id", "vector_id", "qa_type_id", "qa_item_type_id", "question", "answer")
 
@@ -79,15 +79,17 @@ def apply(rows: List[dict], post: Callable[[str, dict], dict], batch_size: int) 
 
 
 def http_client(base_url: str, key: str):
-    client = httpx.Client(base_url=base_url.rstrip("/"), headers={"X-Internal-Api-Key": key}, timeout=300)
+    # requests 已在 requirements.txt 內，容器內可直接執行（docker cp 後 docker exec），不需額外安裝套件
+    base = base_url.rstrip("/")
+    headers = {"X-Internal-Api-Key": key}
 
     def post(path, body):
-        r = client.post(path, json=body)
+        r = requests.post(base + path, json=body, headers=headers, timeout=300)
         r.raise_for_status()
         return r.json()
 
     def get(path):
-        r = client.get(path)
+        r = requests.get(base + path, headers=headers, timeout=300)
         r.raise_for_status()
         return r.json()
 

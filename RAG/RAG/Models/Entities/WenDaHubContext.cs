@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,8 +26,7 @@ public partial class WenDaHubContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
-            .UseCollation("latin1_swedish_ci")
-            .HasCharSet("latin1");
+            .UseCollation("latin1_swedish_ci");
 
         modelBuilder.Entity<ChatHeader>(entity =>
         {
@@ -95,8 +94,7 @@ public partial class WenDaHubContext : DbContext
             entity.Property(e => e.NameOther).HasMaxLength(20);
             entity.Property(e => e.NameZh)
                 .HasMaxLength(20)
-                .UseCollation("utf8mb4_general_ci")
-                .HasCharSet("utf8mb4");
+                .UseCollation("utf8mb4_general_ci");
         });
 
         modelBuilder.Entity<Questions>(entity =>
@@ -110,16 +108,14 @@ public partial class WenDaHubContext : DbContext
             entity.Property(e => e.ID).HasColumnType("int(11)");
             entity.Property(e => e.Answer)
                 .HasColumnType("text")
-                .UseCollation("utf8mb4_general_ci")
-                .HasCharSet("utf8mb4");
+                .UseCollation("utf8mb4_general_ci");
             entity.Property(e => e.CreateAt)
                 .HasDefaultValueSql("current_timestamp()")
                 .HasColumnType("datetime");
             entity.Property(e => e.QaItemTypeID).HasColumnType("int(11)");
             entity.Property(e => e.Question)
                 .HasColumnType("text")
-                .UseCollation("utf8mb4_general_ci")
-                .HasCharSet("utf8mb4");
+                .UseCollation("utf8mb4_general_ci");
             entity.Property(e => e.UpdateAt)
                 .HasDefaultValueSql("current_timestamp()")
                 .HasColumnType("datetime");
@@ -150,8 +146,7 @@ public partial class WenDaHubContext : DbContext
             entity.Property(e => e.NameOther).HasMaxLength(50);
             entity.Property(e => e.NameZh)
                 .HasMaxLength(50)
-                .UseCollation("utf8mb4_unicode_ci")
-                .HasCharSet("utf8mb4");
+                .UseCollation("utf8mb4_unicode_ci");
             entity.Property(e => e.Password).HasMaxLength(12);
         });
 

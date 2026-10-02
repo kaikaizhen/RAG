@@ -57,6 +57,26 @@ namespace RAG.Tests.SpaceScope
         }
 
         [Fact]
+        public async Task Ask_maps_no_reliable_content_to_404_not_server_error()
+        {
+            var (gateway, _) = Create(HttpStatusCode.BadRequest, "{\"detail\":\"no content\"}");
+
+            var ex = await Assert.ThrowsAsync<HttpException>(() => gateway.AskAsync(Scope(9), "question", null));
+
+            Assert.Equal(HttpStatusCode.NotFound, ex.StatusCode);
+        }
+
+        [Fact]
+        public async Task Ask_still_reports_other_failures_as_server_error()
+        {
+            var (gateway, _) = Create(HttpStatusCode.ServiceUnavailable);
+
+            var ex = await Assert.ThrowsAsync<HttpException>(() => gateway.AskAsync(Scope(9), "question", null));
+
+            Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
+        }
+
+        [Fact]
         public async Task Ask_sends_scope_space_id()
         {
             var (gateway, handler) = Create(body: "{\"answer\":\"x\",\"related\":[\"r\"]}");

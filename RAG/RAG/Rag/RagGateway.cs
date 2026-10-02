@@ -45,6 +45,8 @@ namespace RAG.Rag
             var content = new SendChatDto { SpaceId = scope.SpaceId, Question = question, Type = type };
 
             using var response = await SendAsync(HttpMethod.Post, $"{_ragOption.BaseUrl}{_ragOption.AskUrl}", content, cancellationToken);
+            // RAG Server 以 400 表示「沒有足夠可靠的相關內容」（低於門檻或查無資料），屬正常的查無結果，不是伺服器錯誤
+            if (response.StatusCode == HttpStatusCode.BadRequest) throw new HttpException(HttpStatusCode.NotFound, "找不到足夠可靠的相關資料");
             if (!response.IsSuccessStatusCode) throw new HttpException(HttpStatusCode.InternalServerError, "Ask API Error");
 
             return JsonConvert.DeserializeObject<ChatReponseDto>(await response.Content.ReadAsStringAsync(cancellationToken))

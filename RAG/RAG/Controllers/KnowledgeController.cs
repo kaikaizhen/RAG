@@ -1,5 +1,4 @@
 using Asp.Versioning;
-using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Context;
@@ -23,18 +22,14 @@ namespace RAG.Controllers
     {
         private const string GroundedNotice = "evidence 為知識庫中的依據；status 為 Stale / Inferred 者可信度較低。similar 僅為類似答案，不可當作依據。";
         private const string InsufficientNotice = "知識庫中沒有足夠依據。similar 僅為類似答案，不可當作依據；請改由你自己的判斷或向使用者確認。";
-
-        private readonly IApiExecutorHandler _apiExecutorHandler;
         private readonly ISpaceContextAccessor _spaceContextAccessor;
         private readonly IKnowledgeSearchService _knowledgeSearch;
 
         public KnowledgeController(
-            IApiExecutorHandler apiExecutorHandler,
             ISpaceContextAccessor spaceContextAccessor,
             IKnowledgeSearchService knowledgeSearch
         )
         {
-            _apiExecutorHandler = apiExecutorHandler;
             _spaceContextAccessor = spaceContextAccessor;
             _knowledgeSearch = knowledgeSearch;
         }
@@ -50,23 +45,17 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Search([FromBody] KnowledgeSearchParam request)
         {
-            return await _apiExecutorHandler.RunAsync(async (request) =>
-            {
-                var result = await _knowledgeSearch.SearchAsync(_spaceContextAccessor.Current, request.Query, request.Type, HttpContext.RequestAborted);
+            var result = await _knowledgeSearch.SearchAsync(_spaceContextAccessor.Current, request.Query, request.Type, HttpContext.RequestAborted);
 
-                return new KnowledgeSearchVM
-                {
-                    SpaceID = result.SpaceId,
-                    SpaceKey = result.SpaceKey,
-                    Status = result.Status,
-                    Evidence = result.Evidence.Select(ToVM).ToList(),
-                    Similar = result.Similar.Select(ToVM).ToList(),
-                    Notice = result.Status == KnowledgeSearchStatus.Insufficient ? InsufficientNotice : GroundedNotice
-                };
-            },
-            verify: false,
-            parameter: request
-            );
+            return Ok(new KnowledgeSearchVM
+            {
+                SpaceID = result.SpaceId,
+                SpaceKey = result.SpaceKey,
+                Status = result.Status,
+                Evidence = result.Evidence.Select(ToVM).ToList(),
+                Similar = result.Similar.Select(ToVM).ToList(),
+                Notice = result.Status == KnowledgeSearchStatus.Insufficient ? InsufficientNotice : GroundedNotice
+            });
         }
 
         private static KnowledgeItemVM ToVM(KnowledgeItem item) => new()

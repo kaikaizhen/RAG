@@ -1,4 +1,5 @@
 import hashlib
+import uuid
 
 import numpy as np
 import pytest
@@ -12,20 +13,15 @@ SPACE_A = 1
 SPACE_B = 2
 
 
-class FakeModel:
-    """以文字雜湊產生固定 384 維向量；相同文字得到相同向量（cosine = 1）"""
-
-    def get_sentence_embedding_dimension(self):
-        return 384
-
-    def encode(self, text, **kwargs):
-        seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:8], 16)
-        return np.random.default_rng(seed).random(384)
+def fake_embed(text):
+    """以文字雜湊產生固定 1024 維向量；相同文字得到相同向量（cosine = 1）"""
+    seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:8], 16)
+    return np.random.default_rng(seed).random(1024).tolist()
 
 
 @pytest.fixture(autouse=True)
 def fresh_collection(monkeypatch):
-    monkeypatch.setattr(main, "get_sentence_model", lambda: FakeModel())
+    monkeypatch.setattr(main, "embed_text", fake_embed)
     if main.COLLECTION_NAME in [c.name for c in main.client.get_collections().collections]:
         main.client.delete_collection(main.COLLECTION_NAME)
     main._space_index_ready = False
@@ -169,10 +165,10 @@ def test_space_a_can_update_own_point_in_place(api):
 
 
 def test_unscoped_legacy_point_is_invisible_and_cannot_be_claimed(api):
-    main.ensure_collection(384)
+    main.ensure_collection(main.EMBEDDING_DIMENSION)
     legacy_id = "11111111-1111-1111-1111-111111111111"
     main.client.upsert(main.COLLECTION_NAME, points=[models.PointStruct(
-        id=legacy_id, vector=FakeModel().encode("legacy").tolist(),
+        id=legacy_id, vector=fake_embed("legacy"),
         payload={"question": "legacy", "answer": "legacy", "type": "2"})])
 
     assert api.get(f"/questions?space_id={SPACE_A}", headers=KEY).json()["count"] == 0
@@ -241,6 +237,105 @@ def test_reads_do_not_create_missing_collection(api):
     assert not main.client.collection_exists(main.COLLECTION_NAME)
 
 
-def test_default_embedding_model_is_bilingual_bge_m3():
-    assert main.EMBEDDING_MODEL == "BAAI/bge-m3"
-    assert main.COLLECTION_NAME == "rag_knowledge_bge_m3"
+def test_default_embedding_backend_is_remote_ollama_qwen3():
+    assert main.OLLAMA_EMBED_MODEL == "qwen3-embedding:0.6b"
+    assert main.EMBEDDING_DIMENSION == 1024
+    assert main.COLLECTION_NAME == "rag_knowledge_v2"
+    assert not hasattr(main, "SentenceTransformer") and not hasattr(main, "get_qa_model")
+
+
+# ---------- Ollama embedding：錯誤處理，不 fallback ----------
+
+class FakeResponse:
+    def __init__(self, payload, status=200):
+        self.payload, self.status = payload, status
+
+    def raise_for_status(self):
+        if self.status >= 400:
+            raise main.requests.HTTPError(str(self.status))
+
+    def json(self):
+        return self.payload
+
+
+def test_embed_text_calls_ollama_api_embed(monkeypatch):
+    calls = []
+    monkeypatch.undo()
+    monkeypatch.setattr(main.requests, "post", lambda url, json, timeout: calls.append((url, json, timeout)) or FakeResponse({"embeddings": [[0.1] * 1024]}))
+
+    assert len(main.embed_text("hi")) == 1024
+    assert calls[0][0].endswith("/api/embed")
+    assert calls[0][1] == {"model": "qwen3-embedding:0.6b", "input": "hi"}
+    assert calls[0][2] == main.OLLAMA_TIMEOUT_SECONDS
+
+
+@pytest.mark.parametrize("failure", [
+    lambda url, json, timeout: (_ for _ in ()).throw(main.requests.Timeout("t")),
+    lambda url, json, timeout: FakeResponse({}, status=500),
+    lambda url, json, timeout: FakeResponse({"embeddings": []}),
+    lambda url, json, timeout: FakeResponse({"embeddings": [[0.1] * 384]}),
+])
+def test_embed_failures_return_503_and_write_nothing(api, monkeypatch, failure):
+    monkeypatch.undo()
+    monkeypatch.setattr(main.requests, "post", failure)
+
+    response = write(api, SPACE_A)
+
+    assert response.status_code == 503
+    assert not main.client.collection_exists(main.COLLECTION_NAME) or main.client.count(main.COLLECTION_NAME).count == 0
+
+
+def test_model_status_reports_ollama_health(api, monkeypatch):
+    monkeypatch.setattr(main.requests, "get", lambda url, timeout: FakeResponse({"models": [{"name": "qwen3-embedding:0.6b"}]}))
+    assert api.get("/model_status", headers=KEY).json()["embedding"] == {
+        "provider": "ollama", "status": "ok", "model": "qwen3-embedding:0.6b", "dimension": 1024}
+
+    monkeypatch.setattr(main.requests, "get", lambda url, timeout: (_ for _ in ()).throw(main.requests.ConnectionError("x")))
+    assert api.get("/model_status", headers=KEY).json()["embedding"]["status"] == "unreachable"
+
+
+# ---------- /ask：threshold + margin ----------
+
+def seed_points(scores, monkeypatch):
+    """以 3 維向量精準控制相似度：查詢向量固定為 [1,0,0]"""
+    monkeypatch.setattr(main, "EMBEDDING_DIMENSION", 3)
+    main.ensure_collection(3)
+    points = []
+    for i, score in enumerate(scores):
+        vec = [score, (1 - score ** 2) ** 0.5, 0.0]
+        points.append(models.PointStruct(id=str(uuid.UUID(int=i + 1)), vector=vec,
+                                         payload={"question": f"q{i}", "answer": f"a{i}", "type": "2", main.SPACE_ID_KEY: SPACE_A}))
+    main.client.upsert(main.COLLECTION_NAME, points=points)
+    monkeypatch.setattr(main, "embed_text", lambda text: [1.0, 0.0, 0.0])
+
+
+def ask(api):
+    return api.post("/ask", json={"space_id": SPACE_A, "question": "x"}, headers=KEY)
+
+
+@pytest.fixture
+def thresholds(monkeypatch):
+    monkeypatch.setattr(main, "DIRECT_MATCH_THRESHOLD", 0.8)
+    monkeypatch.setattr(main, "DIRECT_MATCH_MARGIN", 0.1)
+    monkeypatch.setattr(main, "SIMILAR_SCORE_THRESHOLD", 0.5)
+
+
+def test_ask_direct_match_needs_threshold_and_margin(api, monkeypatch, thresholds):
+    seed_points([0.95, 0.70], monkeypatch)
+    body = ask(api).json()
+    assert body["method"] == "direct_match" and body["answer"].startswith("a0")
+
+
+def test_ask_high_score_without_margin_is_not_direct_match(api, monkeypatch, thresholds):
+    seed_points([0.95, 0.92], monkeypatch)
+    assert ask(api).json()["method"] == "context_summary"
+
+
+def test_ask_middle_score_is_context_summary(api, monkeypatch, thresholds):
+    seed_points([0.65], monkeypatch)
+    assert ask(api).json()["method"] == "context_summary"
+
+
+def test_ask_low_score_reports_no_reliable_content(api, monkeypatch, thresholds):
+    seed_points([0.3], monkeypatch)
+    assert ask(api).status_code == 400

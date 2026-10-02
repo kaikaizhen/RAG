@@ -1,0 +1,11 @@
+<Project>
+
+  <!--
+    共用 Library（D:\Library，不經 NuGet / BaGet）的根目錄，以 ProjectReference 直接建置。
+    Docker 建置時以 -p:LibraryRoot=/library/ 覆寫（見 Dockerfile 的 build context "library"）。
+  -->
+  <PropertyGroup>
+    <LibraryRoot Condition="'$(LibraryRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\Library'))\</LibraryRoot>
+  </PropertyGroup>
+
+</Project>

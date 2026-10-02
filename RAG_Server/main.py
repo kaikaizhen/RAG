@@ -8,8 +8,7 @@ from typing import Optional, List
 import hmac
 import os
 import uuid
-import threading
-import time
+import requests
 
 # ==============================
 # 環境設定（請透過 .env 或環境變數提供）
@@ -18,21 +17,29 @@ QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 # 測試可設定 QDRANT_LOCATION=":memory:"；設定後優先於 host / port
 QDRANT_LOCATION = os.getenv("QDRANT_LOCATION", "")
-# 藍綠切換：新模型使用新 collection，舊 collection（rag_knowledge，384 維）保留供回退
-COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "rag_knowledge_bge_m3")
-# 中英雙語與跨語言檢索（2026-09-25 以雙語測試集比較後選定）
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+# 更換 embedding 模型必須使用新 collection（舊 rag_knowledge_bge_m3 為 bge-m3 向量，保留供回退）
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "rag_knowledge_v2")
+# Embedding 由遠端 Ollama 提供，本服務不載入任何本地模型；Ollama 失敗時直接回 503，不 fallback
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://192.168.0.188:11434").rstrip("/")
+OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "qwen3-embedding:0.6b")
+EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "1024"))
+OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "30"))
+OLLAMA_HEALTH_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_HEALTH_TIMEOUT_SECONDS", "3"))
+# /ask 判斷門檻（與 .NET ContextRuntime 由 compose/.env 注入同一組值）；依 qwen3-embedding:0.6b 校準（見 docs/calibration）
+DIRECT_MATCH_THRESHOLD = float(os.getenv("DIRECT_MATCH_THRESHOLD", "0.7"))
+DIRECT_MATCH_MARGIN = float(os.getenv("DIRECT_MATCH_MARGIN", "0.05"))
+SIMILAR_SCORE_THRESHOLD = float(os.getenv("SIMILAR_SCORE_THRESHOLD", "0.50"))
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 # .NET API 與本服務共用的內部金鑰；未設定時所有受保護端點一律拒絕（fail-closed）
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
-DISABLE_MODEL_PRELOAD = os.getenv("RAG_DISABLE_MODEL_PRELOAD", "") == "1"
 
 SPACE_ID_KEY = "space_id"
 
 # ==============================
 # 初始化 FastAPI
 # ==============================
-app = FastAPI(title="RAG API")
+# root_path 讓服務可以掛在 Nginx 的 /ai/ 前綴之下，docs / openapi.json 連結才會正確
+app = FastAPI(title="RAG API", root_path=os.getenv("RAG_ROOT_PATH", ""))
 
 # 啟用 CORS（跨域設定）
 app.add_middleware(
@@ -48,11 +55,6 @@ app.add_middleware(
 # ==============================
 client = QdrantClient(location=QDRANT_LOCATION) if QDRANT_LOCATION else QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
 
-# 全域變數用於快取模型
-_model = None
-_qa_model = None
-_model_loading = False
-_qa_model_loading = False
 _space_index_ready = False
 
 
@@ -68,53 +70,40 @@ def require_internal_key(x_internal_api_key: Optional[str] = Header(default=None
 
 
 # ==============================
-# 模型載入
+# Embedding（遠端 Ollama）
 # ==============================
-def load_models_background():
-    """在背景執行緒中載入模型"""
-    global _model, _qa_model, _model_loading, _qa_model_loading
-
-    if not _model_loading:
-        _model_loading = True
-        try:
-            print("背景載入 SentenceTransformer 模型...")
-            from sentence_transformers import SentenceTransformer
-            _model = SentenceTransformer(EMBEDDING_MODEL)
-            print("SentenceTransformer 模型載入完成")
-        except Exception as e:
-            print(f"SentenceTransformer 載入失敗: {e}")
-        _model_loading = False
-
-    if not _qa_model_loading:
-        _qa_model_loading = True
-        try:
-            print("背景載入 QA 模型...")
-            from transformers import pipeline
-            _qa_model = pipeline("question-answering", model="uer/roberta-base-chinese-extractive-qa")
-            print("QA 模型載入完成")
-        except Exception as e:
-            print(f"QA 模型載入失敗: {e}")
-        _qa_model_loading = False
+def embed_text(text: str) -> List[float]:
+    """呼叫 Ollama /api/embed；逾時、錯誤、格式或維度不符一律回 503，不 fallback 本地模型"""
+    try:
+        response = requests.post(
+            f"{OLLAMA_BASE_URL}/api/embed",
+            json={"model": OLLAMA_EMBED_MODEL, "input": text},
+            timeout=OLLAMA_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        embeddings = response.json().get("embeddings")
+    except (requests.RequestException, ValueError) as e:
+        print(f"Ollama embedding 失敗: {e}")
+        raise HTTPException(status_code=503, detail="Embedding 服務無法使用，請稍後再試")
+    if not embeddings or not isinstance(embeddings[0], list):
+        raise HTTPException(status_code=503, detail="Embedding 服務回應格式錯誤")
+    vector = embeddings[0]
+    if len(vector) != EMBEDDING_DIMENSION:
+        print(f"Embedding 維度 {len(vector)} 與設定 {EMBEDDING_DIMENSION} 不符")
+        raise HTTPException(status_code=503, detail=f"Embedding 維度 {len(vector)} 與設定 {EMBEDDING_DIMENSION} 不符")
+    return vector
 
 
-def get_sentence_model():
-    """取得 sentence transformer 模型"""
-    global _model, _model_loading
-    if _model is None and not _model_loading:
-        thread = threading.Thread(target=load_models_background)
-        thread.daemon = True
-        thread.start()
-    return _model
-
-
-def get_qa_model():
-    """取得 QA 模型"""
-    global _qa_model, _qa_model_loading
-    if _qa_model is None and not _qa_model_loading:
-        thread = threading.Thread(target=load_models_background)
-        thread.daemon = True
-        thread.start()
-    return _qa_model
+def ollama_health() -> dict:
+    """檢查 Ollama 是否可連線且已安裝指定的 embedding 模型"""
+    try:
+        response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=OLLAMA_HEALTH_TIMEOUT_SECONDS)
+        response.raise_for_status()
+        names = {m.get("name") for m in response.json().get("models", [])}
+    except (requests.RequestException, ValueError):
+        return {"status": "unreachable", "model": OLLAMA_EMBED_MODEL, "dimension": EMBEDDING_DIMENSION}
+    status = "ok" if OLLAMA_EMBED_MODEL in names or f"{OLLAMA_EMBED_MODEL}:latest" in names else "model_missing"
+    return {"status": status, "model": OLLAMA_EMBED_MODEL, "dimension": EMBEDDING_DIMENSION}
 
 
 # ==============================
@@ -211,19 +200,11 @@ def find_points_in_space(space_id: int, point_ids: List[str]):
 # ==============================
 # 核心功能
 # ==============================
-def embedding_dimension(model) -> int:
-    return model.get_sentence_embedding_dimension()
-
-
-def encode(model, text: str) -> List[float]:
-    return model.encode(text, normalize_embeddings=True).tolist()
-
-
 def ensure_collection(vector_size: Optional[int] = None, collection_name: str = COLLECTION_NAME) -> bool:
     """
     確保 Collection 與 space_id payload index 存在。
     vector_size 為 None（讀取 / 刪除）且 collection 不存在時回傳 False，不建立；
-    collection 維度與目前模型不符時拒絕操作，避免混入不相容的向量。
+    collection 維度與 embedding 設定不符時拒絕操作，避免混入不相容的向量。
     """
     global _space_index_ready
     if not client.collection_exists(collection_name):
@@ -237,7 +218,7 @@ def ensure_collection(vector_size: Optional[int] = None, collection_name: str = 
     elif vector_size is not None:
         existing = client.get_collection(collection_name).config.params.vectors.size
         if existing != vector_size:
-            raise HTTPException(status_code=500, detail=f"Collection 維度 {existing} 與 embedding 模型維度 {vector_size} 不符")
+            raise HTTPException(status_code=500, detail=f"Collection 維度 {existing} 與 embedding 設定維度 {vector_size} 不符")
     if not _space_index_ready:
         client.create_payload_index(
             collection_name=collection_name,
@@ -262,11 +243,7 @@ def insert_vectors(collection_name: str, vectors: List[dict]):
 
 def process_questions_to_vector(request: QuestionListRequest):
     """將問題轉向量並寫入 Qdrant（僅限指定 Space）"""
-    model = get_sentence_model()
-
-    if model is None:
-        raise HTTPException(status_code=503, detail="模型正在載入中，請稍後再試")
-    ensure_collection(embedding_dimension(model))
+    ensure_collection(EMBEDDING_DIMENSION)
 
     # 既有 ID 必須屬於同一個 Space，避免以猜測的 ID 覆寫其他 Space 的向量
     reference_ids = [q.referenceId for q in request.questions if q.referenceId]
@@ -278,7 +255,7 @@ def process_questions_to_vector(request: QuestionListRequest):
     vectors = []
     for q in request.questions:
         try:
-            vector = encode(model, q.question)
+            vector = embed_text(q.question)
             payload = QdrantPayload(
                 id=q.referenceId if q.referenceId else str(uuid.uuid4()),
                 referenId=str(q.id),
@@ -292,6 +269,8 @@ def process_questions_to_vector(request: QuestionListRequest):
                 "vector": vector,
                 "payload": payload.model_dump(mode="json")
             })
+        except HTTPException:
+            raise
         except Exception as e:
             print(f"處理問題時發生錯誤: {e}")
             raise HTTPException(status_code=400, detail=f"處理問題時發生錯誤")
@@ -305,14 +284,10 @@ def process_questions_to_vector(request: QuestionListRequest):
 
 def generate_answer(request: AskRequest):
     """查詢 Qdrant 並產生回答（僅搜尋指定 Space）"""
-    model = get_sentence_model()
-
-    if model is None:
-        raise HTTPException(status_code=503, detail="模型正在載入中，請稍後再試")
-    if not ensure_collection(embedding_dimension(model)):
+    if not ensure_collection(EMBEDDING_DIMENSION):
         raise HTTPException(status_code=400, detail="找不到相關內容")
 
-    query_vector = encode(model, request.question)
+    query_vector = embed_text(request.question)
 
     extra = []
     if request.type:
@@ -340,24 +315,27 @@ def generate_answer(request: AskRequest):
 
     context = "\n".join(unique_answers)
 
-    # 選擇最相似的一筆
-    best_match = max(results, key=lambda r: r.score)
+    # results 依分數由高到低；direct match 需同時超過門檻且與第二名拉開差距
+    best_match = results[0]
+    confidence = best_match.score
+    margin = confidence - results[1].score if len(results) > 1 else confidence
 
-    if best_match and best_match.score > 0.7:
+    if confidence < SIMILAR_SCORE_THRESHOLD:
+        raise HTTPException(status_code=400, detail="找不到足夠可靠的相關內容")
+
+    if confidence >= DIRECT_MATCH_THRESHOLD and margin >= DIRECT_MATCH_MARGIN:
         print("執行直接匹配")
         answer = best_match.payload["answer"]
-        confidence = best_match.score
         method = "direct_match"
     else:
         print("執行內容摘要")
         answer = f"根據相關內容：{context[:500]}..." if len(context) > 500 else context
-        confidence = best_match.score
         method = "context_summary"
 
     # 去除句子重複
     answer = dedup_text(answer)
 
-    print(f"回答方式: {method}, 信心度: {confidence}")
+    print(f"回答方式: {method}, 信心度: {confidence}, 與第二名差距: {margin}")
     return {
         "answer": answer,
         "confidence": confidence,
@@ -368,11 +346,7 @@ def generate_answer(request: AskRequest):
 
 def search_knowledge(request: SearchRequest):
     """只檢索、不生成：回傳指定 Space 內的命中結果與相似度分數"""
-    model = get_sentence_model()
-
-    if model is None:
-        raise HTTPException(status_code=503, detail="模型正在載入中，請稍後再試")
-    if not ensure_collection(embedding_dimension(model)):
+    if not ensure_collection(EMBEDDING_DIMENSION):
         return {"hits": []}
 
     extra = []
@@ -381,7 +355,7 @@ def search_knowledge(request: SearchRequest):
 
     results = client.search(
         collection_name=COLLECTION_NAME,
-        query_vector=encode(model, request.query),
+        query_vector=embed_text(request.query),
         limit=request.limit,
         with_payload=True,
         query_filter=space_filter(request.space_id, *extra)
@@ -428,8 +402,7 @@ def get_collections():
 def read_root():
     return {
         "message": "RAG API is running",
-        "sentence_model_status": "loaded" if _model else "loading" if _model_loading else "not_loaded",
-        "qa_model_status": "loaded" if _qa_model else "loading" if _qa_model_loading else "not_loaded"
+        "embedding": ollama_health()
     }
 
 
@@ -460,10 +433,7 @@ def api_get_collections():
 
 @app.get("/model_status", dependencies=[Depends(require_internal_key)])
 def get_model_status():
-    return {
-        "sentence_model": "loaded" if _model else "loading" if _model_loading else "not_loaded",
-        "qa_model": "loaded" if _qa_model else "loading" if _qa_model_loading else "not_loaded"
-    }
+    return {"embedding": {"provider": "ollama", **ollama_health()}}
 
 
 @app.get("/questions", dependencies=[Depends(require_internal_key)])
@@ -490,18 +460,3 @@ def list_questions(space_id: int = Query(gt=0), limit: int = Query(default=100, 
             })
     return {"status": "success", "count": len(questions), "questions": questions}
 
-
-# ==============================
-# 啟動事件：背景載入模型
-# ==============================
-@app.on_event("startup")
-async def startup_event():
-    if DISABLE_MODEL_PRELOAD:
-        return
-
-    def delayed_load():
-        time.sleep(2)
-        load_models_background()
-    thread = threading.Thread(target=delayed_load)
-    thread.daemon = True
-    thread.start()

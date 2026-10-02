@@ -29,7 +29,7 @@ namespace RAG.Tests.Contracts
         [Fact]
         public async Task Live_openapi_document_matches_sdk_snapshot()
         {
-            var live = JsonNode.Parse(await _factory.CreateClient().GetStringAsync("/swagger/v1/swagger.json"))!;
+            var live = JsonNode.Parse(await _factory.CreateClient().GetStringAsync("/openapi/v1.json"))!;
             var path = SnapshotPath();
 
             if (Environment.GetEnvironmentVariable("UPDATE_OPENAPI_SNAPSHOT") == "1")
@@ -46,7 +46,7 @@ namespace RAG.Tests.Contracts
         [Fact]
         public async Task Openapi_document_is_versioned_and_bearer_protected()
         {
-            var doc = JsonNode.Parse(await _factory.CreateClient().GetStringAsync("/swagger/v1/swagger.json"))!;
+            var doc = JsonNode.Parse(await _factory.CreateClient().GetStringAsync("/openapi/v1.json"))!;
             var paths = doc["paths"]!.AsObject().Select(p => p.Key).ToList();
 
             Assert.NotEmpty(paths);

@@ -89,8 +89,8 @@
 | 物件映射 | AutoMapper 14 |
 | 驗證 | JWT（Access Token / Refresh Token） |
 | 向量服務 | Python 3.11、FastAPI、Uvicorn、Pydantic v2 |
-| 向量資料庫 | Qdrant（384 維、Cosine 距離） |
-| 模型 | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`（多語系向量）<br>`uer/roberta-base-chinese-extractive-qa`（中文抽取式 QA） |
+| 向量資料庫 | Qdrant（1024 維、Cosine 距離） |
+| Embedding | 遠端 Ollama `qwen3-embedding:0.6b`（`/api/embed`，1024 維）；本服務不載入本地模型 |
 | 容器化 | Docker、Docker Compose |
 
 ---
@@ -131,8 +131,8 @@ docker run -d -p 6333:6333 --name qdrant qdrant/qdrant
 uvicorn main:app --host 0.0.0.0 --port 8007
 ```
 
-服務啟動後會在背景執行緒載入模型（首次會下載模型檔，需要一些時間）。
-可透過 `GET /model_status` 查詢載入進度，`loaded` 表示可正常提供服務。
+Embedding 由遠端 Ollama 提供（`OLLAMA_BASE_URL`），啟動時不載入任何模型。
+可透過 `GET /model_status` 檢查 Ollama 狀態，`status: ok` 表示可連線且已安裝指定模型；Ollama 失敗時寫入與查詢回 503，不 fallback。
 
 ### 2. RAG（.NET API）
 
@@ -206,7 +206,11 @@ docker run -d -p 8007:8007 \
 | --- | --- | --- |
 | `QDRANT_HOST` | `localhost` | Qdrant 主機 |
 | `QDRANT_PORT` | `6333` | Qdrant 連接埠 |
-| `QDRANT_COLLECTION` | `rag_knowledge` | Collection 名稱 |
+| `QDRANT_COLLECTION` | `rag_knowledge_v2` | Collection 名稱（更換 embedding 模型必須使用新 collection） |
+| `OLLAMA_BASE_URL` | `http://192.168.0.188:11434` | Ollama 位址 |
+| `OLLAMA_EMBED_MODEL` | `qwen3-embedding:0.6b` | Embedding 模型 |
+| `EMBEDDING_DIMENSION` | `1024` | 向量維度（與回傳維度不符時拒絕寫入 / 查詢） |
+| `DIRECT_MATCH_THRESHOLD` / `DIRECT_MATCH_MARGIN` / `SIMILAR_SCORE_THRESHOLD` | `0.70` / `0.05` / `0.50` | `/ask` 判斷門檻（依 qwen3 校準）；`DIRECT_MATCH_THRESHOLD`、`SIMILAR_SCORE_THRESHOLD` 與 .NET ContextRuntime 共用同一組值 |
 | `CORS_ORIGINS` | `*` | 允許來源，多筆以逗號分隔 |
 
 ---
@@ -241,7 +245,7 @@ docker run -d -p 8007:8007 \
 | 方法 | 路徑 | 說明 |
 | --- | --- | --- |
 | `GET` | `/` | 服務與模型狀態 |
-| `GET` | `/model_status` | 模型載入狀態 |
+| `GET` | `/model_status` | Ollama embedding 狀態 |
 | `POST` | `/questionsToVector` | 批次將問題轉向量並寫入 Qdrant |
 | `POST` | `/ask` | 語意檢索並產生回答 |
 | `GET` | `/questions` | 列出已建立的問題（預設上限 100 筆） |

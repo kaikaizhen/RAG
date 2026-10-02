@@ -123,7 +123,7 @@ namespace RAG.Tests.Context
         [Fact]
         public async Task Low_scores_are_insufficient_with_similar_answers_marked_as_not_evidence()
         {
-            Hits(Space1, (SeedData.QuestionA, 0.59), (SeedData.QuestionB, 0.46), (40, 0.44));
+            Hits(Space1, (SeedData.QuestionA, 0.66), (SeedData.QuestionB, 0.52), (40, 0.48));
 
             var result = await SearchAsync(new { query = "x" });
 

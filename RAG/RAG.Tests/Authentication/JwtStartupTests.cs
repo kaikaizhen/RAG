@@ -1,10 +1,8 @@
-using Library.Http.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RAG.Authentication;
 using RAG.Tests.Infrastructure;
 using System.Text.Json;
-using TD_WebApiHelper.Core.Helpers;
 
 namespace RAG.Tests.Authentication
 {
@@ -74,20 +72,6 @@ namespace RAG.Tests.Authentication
 
             Assert.ThrowsAny<Exception>(() => factory.CreateClient());
             Assert.False(File.Exists(missing));
-        }
-
-        [Fact]
-        public void Library_jwt_helper_is_replaced_and_executor_is_not_an_authentication_authority()
-        {
-            using var factory = new RagApiFactory();
-            using var scope = factory.Services.CreateScope();
-
-            var helper = scope.ServiceProvider.GetRequiredService<IJwtTokenHelper>();
-            Assert.IsType<DisabledLibraryJwtTokenHelper>(helper);
-            Assert.Throws<NotSupportedException>(() => helper.ValidateToken("any"));
-
-            // ApiExecutorHandler 仍可建構（僅作例外 → HTTP status 轉換），但不會觸發 Library secret 產生
-            Assert.NotNull(scope.ServiceProvider.GetRequiredService<IApiExecutorHandler>());
         }
 
         private sealed class MissingSecretFactory : RagApiFactory

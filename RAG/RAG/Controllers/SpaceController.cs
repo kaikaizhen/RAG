@@ -1,5 +1,4 @@
 using Asp.Versioning;
-using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Authentication;
@@ -17,19 +16,16 @@ namespace RAG.Controllers
     [Tags("Space 功能模組")]
     public class SpaceController : ControllerBase
     {
-        private readonly IApiExecutorHandler _apiExecutorHandler;
         private readonly ICurrentUserAccessor _currentUser;
         private readonly ISpaceMembershipStore _membershipStore;
         private readonly ISpaceContextAccessor _spaceContextAccessor;
 
         public SpaceController(
-            IApiExecutorHandler apiExecutorHandler,
             ICurrentUserAccessor currentUser,
             ISpaceMembershipStore membershipStore,
             ISpaceContextAccessor spaceContextAccessor
         )
         {
-            _apiExecutorHandler = apiExecutorHandler;
             _currentUser = currentUser;
             _membershipStore = membershipStore;
             _spaceContextAccessor = spaceContextAccessor;
@@ -43,17 +39,12 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(List<SpaceVM>), StatusCodes.Status200OK)]
         public async Task<IActionResult> Get()
         {
-            return await _apiExecutorHandler.RunAsync(async () =>
-            {
-                var memberships = await _membershipStore.GetActiveMembershipsAsync(_currentUser.UserId, HttpContext.RequestAborted);
+            var memberships = await _membershipStore.GetActiveMembershipsAsync(_currentUser.UserId, HttpContext.RequestAborted);
 
-                return memberships
-                    .Where(m => SpaceRoles.TryGetPermissions(m.Role, out _))
-                    .Select(m => new SpaceVM { SpaceID = m.SpaceId, Key = m.SpaceKey, Name = m.SpaceName, Role = m.Role, IsDefault = m.IsDefault })
-                    .ToList();
-            },
-            verify: false
-            );
+            return Ok(memberships
+                .Where(m => SpaceRoles.TryGetPermissions(m.Role, out _))
+                .Select(m => new SpaceVM { SpaceID = m.SpaceId, Key = m.SpaceKey, Name = m.SpaceName, Role = m.Role, IsDefault = m.IsDefault })
+                .ToList());
         }
 
         /// <summary>
@@ -66,23 +57,18 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status403Forbidden)]
         public IActionResult GetCurrent()
         {
-            return _apiExecutorHandler.Run(() =>
-            {
-                var context = _spaceContextAccessor.Current;
+            var context = _spaceContextAccessor.Current;
 
-                return new CurrentSpaceVM
-                {
-                    SpaceID = context.Space.SpaceId,
-                    Key = context.Space.SpaceKey,
-                    Name = context.Space.SpaceName,
-                    Role = context.Space.Role,
-                    Permissions = context.Space.Permissions.OrderBy(p => p, StringComparer.Ordinal).ToList(),
-                    RepositoryID = context.Resource.RepositoryId,
-                    ProjectID = context.Resource.ProjectId
-                };
-            },
-            verify: false
-            );
+            return Ok(new CurrentSpaceVM
+            {
+                SpaceID = context.Space.SpaceId,
+                Key = context.Space.SpaceKey,
+                Name = context.Space.SpaceName,
+                Role = context.Space.Role,
+                Permissions = context.Space.Permissions.OrderBy(p => p, StringComparer.Ordinal).ToList(),
+                RepositoryID = context.Resource.RepositoryId,
+                ProjectID = context.Resource.ProjectId
+            });
         }
     }
 }

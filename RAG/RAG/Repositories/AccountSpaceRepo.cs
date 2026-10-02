@@ -1,4 +1,4 @@
-using Exercise.Repositories;
+using Library.Repo;
 using Microsoft.EntityFrameworkCore;
 using RAG.Models.Entities;
 using RAG.SpaceRuntime;
@@ -8,13 +8,13 @@ namespace RAG.Repositories
     /// <summary>
     /// Space membership 的資料來源（AccountSpace + Space）
     /// </summary>
-    public class AccountSpaceRepo : BaseRepo<WenDaHubContext, AccountSpace>, ISpaceMembershipStore
+    public class AccountSpaceRepo : RagRepo<AccountSpace>, ISpaceMembershipStore
     {
         public AccountSpaceRepo(WenDaHubContext context) : base(context) { }
 
         public async Task<IReadOnlyList<SpaceMembership>> GetActiveMembershipsAsync(int userId, CancellationToken cancellationToken = default)
         {
-            var query = QueryAsync(
+            var query = Query(
                 filter: q => q.UserID == userId && q.IsActive && q.Space.IsActive,
                 orderBy: q => q.OrderBy(x => x.SpaceID)
             );

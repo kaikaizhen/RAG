@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
@@ -11,25 +11,32 @@
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="14.0.0" />
-    <PackageReference Include="Library" Version="1.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.31" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.9">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
-    <!-- 對齊 Library 使用的 Microsoft.IdentityModel 8.19.1，避免 JwtBearer 帶入舊版 Protocols 造成版本混用 -->
-    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.19.1" />
-    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.6.2" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.6.2" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.6.2" />
+    <!-- 對齊 Library 使用的 Microsoft.IdentityModel 8.23.0，避免 JwtBearer 帶入舊版 Protocols 造成版本混用 -->
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
+    <!-- 先前由 Library 1.x 傳遞帶入；本專案的 DTO 直接使用 Newtonsoft 屬性 -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <!-- Pomelo 尚無 EF Core 10 版本；改用官方 provider -->
+    <PackageReference Include="MySql.EntityFrameworkCore" Version="10.0.9" />
+  </ItemGroup>
+
+  <!--
+    Migrations 內含 Pomelo 專屬 API（MySqlModelBuilderExtensions 等），provider 改為官方 MySql.EntityFrameworkCore 後無法編譯。
+    執行期從不呼叫 Migrate()；schema 以 Migrations/Scripts 的 SQL 手動套用且已套用完成，故排除編譯、保留檔案作為歷史。
+    之後若要以 dotnet ef 產生新 migration，請以新 provider 重新建立 baseline。
+  -->
+  <ItemGroup>
+    <Compile Remove="Migrations\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,7 +44,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\docs\Library\Library\Library.csproj" />
+    <ProjectReference Include="$(LibraryRoot)src\Library\Library.csproj" />
+    <ProjectReference Include="$(LibraryRoot)src\Library.Abstractions\Library.Abstractions.csproj" />
     <ProjectReference Include="..\RAG.SpaceRuntime\RAG.SpaceRuntime.csproj" />
     <ProjectReference Include="..\RAG.SkillRuntime\RAG.SkillRuntime.csproj" />
     <ProjectReference Include="..\RAG.ToolRuntime\RAG.ToolRuntime.csproj" />

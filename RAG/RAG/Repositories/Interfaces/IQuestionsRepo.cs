@@ -1,9 +1,9 @@
-﻿using Library.Repo.Interfaces;
+using Library.Repo.Interfaces;
 using RAG.Models.Entities;
 
 namespace RAG.Repositories.Interfaces
 {
-    public interface IQuestionsRepo:IBaseRepo<WenDaHubContext,Questions>
+    public interface IQuestionsRepo:IRagRepo<Questions>
     {
         /// <summary>
         /// 查詢問題列表(擁有者 + Space)
@@ -45,33 +45,5 @@ namespace RAG.Repositories.Interfaces
         /// <param name="qaItemTypeIds"></param>
         /// <returns></returns>
         Task<bool> AnyByQaItemTypeIdsAsync(IEnumerable<int> qaItemTypeIds);
-
-        /// <summary>
-        /// 新增問題
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        Task CreateAsync(Questions entity);
-
-        /// <summary>
-        /// 更新問題
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        Task UpdateAsync(Questions entity);
-
-        /// <summary>
-        /// 刪除問題
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        Task DeleteAsync(Questions entity);
-
-        /// <summary>
-        /// 刪除多個問題
-        /// </summary>
-        /// <param name="entities"></param>
-        /// <returns></returns>
-        Task DeleteRangeAsync(List<Questions> entities);
     }
 }

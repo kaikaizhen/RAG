@@ -1,4 +1,4 @@
-﻿using Exercise.Repositories;
+using Library.Repo;
 using Microsoft.EntityFrameworkCore;
 using RAG.Models.Dtos.Question;
 using RAG.Models.Entities;
@@ -6,13 +6,13 @@ using RAG.Repositories.Interfaces;
 
 namespace RAG.Repositories
 {
-    public class QuestionsRepo : BaseRepo<WenDaHubContext,Questions>,IQuestionsRepo
+    public class QuestionsRepo : RagRepo<Questions>,IQuestionsRepo
     {
         public QuestionsRepo(WenDaHubContext context) : base(context) { }
 
         public async Task<List<Questions>> Get(int userId, int spaceId)
         {
-            var query = QueryAsync(
+            var query = Query(
                  filter: q => q.UserID == userId && q.SpaceID == spaceId
             );
 
@@ -21,7 +21,7 @@ namespace RAG.Repositories
 
         public async Task<List<Questions>> GetByTypeIdAsync(int userId, int spaceId, int Id)
         {
-            var query = QueryAsync(
+            var query = Query(
                 filter: q=>q.UserID == userId && q.SpaceID == spaceId && q.QaItemTypeID == Id
             );
 
@@ -30,7 +30,7 @@ namespace RAG.Repositories
 
         public async Task<Questions?> GetByIdAsync(int Id, int userId, int spaceId)
         {
-            var query = QueryAsync(
+            var query = Query(
                filter: q => q.ID == Id && q.UserID == userId && q.SpaceID == spaceId,
                includes:q=>q.Include(x=>x.QaItemType.QaType)
             );
@@ -43,33 +43,13 @@ namespace RAG.Repositories
             var idList = ids.Distinct().ToList();
             if (idList.Count == 0) return new List<Questions>();
 
-            return await QueryAsync(filter: q => idList.Contains(q.ID) && q.SpaceID == spaceId).ToListAsync();
+            return await Query(filter: q => idList.Contains(q.ID) && q.SpaceID == spaceId).ToListAsync();
         }
 
         public async Task<bool> AnyByQaItemTypeIdsAsync(IEnumerable<int> qaItemTypeIds)
         {
             var ids = qaItemTypeIds.ToList();
-            return await QueryAsync(filter: q => ids.Contains(q.QaItemTypeID)).AnyAsync();
-        }
-
-        public async Task CreateAsync(Questions entity)
-        {
-            await AddAsync(entity);
-        }
-
-        public async Task UpdateAsync(Questions entity)
-        {
-            await base.UpdateAsync(entity);
-        }
-
-        public async Task DeleteAsync(Questions entity)
-        {
-            await base.DeleteAsync(entity);
-        }
-
-        public async Task DeleteRangeAsync(List<Questions> entities)
-        {
-            await base.DeleteRangeAsync(entities);
+            return await Query(filter: q => ids.Contains(q.QaItemTypeID)).AnyAsync();
         }
     }
 }

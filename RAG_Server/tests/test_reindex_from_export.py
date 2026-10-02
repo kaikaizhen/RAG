@@ -15,18 +15,15 @@ import reindex_from_export as tool  # noqa: E402
 KEY = {"X-Internal-Api-Key": "test-internal-key"}
 
 
-class FakeModel:
-    def get_sentence_embedding_dimension(self):
-        return 384
-
-    def encode(self, text, **kwargs):
-        seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:8], 16)
-        return np.random.default_rng(seed).random(384)
+def fake_embed(text):
+    """以文字雜湊產生固定 1024 維向量；相同文字得到相同向量（cosine = 1）"""
+    seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:8], 16)
+    return np.random.default_rng(seed).random(1024).tolist()
 
 
 @pytest.fixture
 def api(monkeypatch):
-    monkeypatch.setattr(main, "get_sentence_model", lambda: FakeModel())
+    monkeypatch.setattr(main, "embed_text", fake_embed)
     if main.client.collection_exists(main.COLLECTION_NAME):
         main.client.delete_collection(main.COLLECTION_NAME)
     main._space_index_ready = False

@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using TD_WebApiHelper.Core.Helpers;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 
 namespace RAG.Authentication
 {
@@ -23,9 +23,6 @@ namespace RAG.Authentication
             services.AddSingleton<IRefreshTokenValidator, RefreshTokenValidator>();
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
-
-            // Library 的 JwtTokenHelper 不再是 authentication authority，也不得在 request 中自動產生 secret
-            services.Replace(ServiceDescriptor.Singleton<IJwtTokenHelper, DisabledLibraryJwtTokenHelper>());
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -71,24 +68,37 @@ namespace RAG.Authentication
                     .Build();
 
                 options.DefaultPolicy = authenticatedUser;
-                options.FallbackPolicy = authenticatedUser;
+
+                // 預設所有 endpoint 需要登入；僅 Library 掛載的 OpenAPI 文件（/openapi/*，與舊的 Swagger JSON 一樣公開）例外
+                options.FallbackPolicy = new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
+                    .RequireAssertion(context =>
+                        context.User.Identity?.IsAuthenticated == true
+                        || (context.Resource is HttpContext http && http.Request.Path.StartsWithSegments("/openapi")))
+                    .Build();
             });
 
-            services.ConfigureSwaggerGen(options =>
+            // Library 的 OpenAPI 只負責文件與版本；Bearer 驗證方式由應用程式自己宣告
+            services.ConfigureAll<OpenApiOptions>(options =>
             {
-                var scheme = new OpenApiSecurityScheme
+                options.AddDocumentTransformer((document, _, _) =>
                 {
-                    Name = "Authorization",
-                    Description = "輸入登入取得的 AccessToken",
-                    In = ParameterLocation.Header,
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = JwtBearerDefaults.AuthenticationScheme }
-                };
+                    document.Components ??= new OpenApiComponents();
+                    document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+                    document.Components.SecuritySchemes[JwtBearerDefaults.AuthenticationScheme] = new OpenApiSecurityScheme
+                    {
+                        Description = "輸入登入取得的 AccessToken",
+                        Type = SecuritySchemeType.Http,
+                        Scheme = "bearer",
+                        BearerFormat = "JWT"
+                    };
+                    document.Security ??= new List<OpenApiSecurityRequirement>();
+                    document.Security.Add(new OpenApiSecurityRequirement
+                    {
+                        [new OpenApiSecuritySchemeReference(JwtBearerDefaults.AuthenticationScheme, document)] = new List<string>()
+                    });
 
-                options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, scheme);
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement { [scheme] = Array.Empty<string>() });
+                    return Task.CompletedTask;
+                });
             });
 
             return services;

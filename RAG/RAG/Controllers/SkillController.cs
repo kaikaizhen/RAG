@@ -1,6 +1,5 @@
 using Asp.Versioning;
 using Library.Http;
-using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Context;
@@ -22,21 +21,18 @@ namespace RAG.Controllers
     [Tags("Skill / Workflow 功能模組")]
     public class SkillController : ControllerBase
     {
-        private readonly IApiExecutorHandler _apiExecutorHandler;
         private readonly ISpaceContextAccessor _spaceContextAccessor;
         private readonly ISkillResolver _skillResolver;
         private readonly ISkillBundleLoader _bundleLoader;
         private readonly ContextRuntimeOptions _contextOptions;
 
         public SkillController(
-            IApiExecutorHandler apiExecutorHandler,
             ISpaceContextAccessor spaceContextAccessor,
             ISkillResolver skillResolver,
             ISkillBundleLoader bundleLoader,
             ContextRuntimeOptions contextOptions
         )
         {
-            _apiExecutorHandler = apiExecutorHandler;
             _spaceContextAccessor = spaceContextAccessor;
             _skillResolver = skillResolver;
             _bundleLoader = bundleLoader;
@@ -55,30 +51,25 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> GetBundle([FromQuery] int? tokenBudget)
         {
-            return await _apiExecutorHandler.RunAsync(async () =>
+            var budget = tokenBudget ?? _contextOptions.DefaultTokenBudget;
+            if (budget <= 0 || budget > _contextOptions.MaxTokenBudget)
             {
-                var budget = tokenBudget ?? _contextOptions.DefaultTokenBudget;
-                if (budget <= 0 || budget > _contextOptions.MaxTokenBudget)
-                {
-                    throw new HttpException(HttpStatusCode.BadRequest, $"tokenBudget must be 1-{_contextOptions.MaxTokenBudget}");
-                }
+                throw new HttpException(HttpStatusCode.BadRequest, $"tokenBudget must be 1-{_contextOptions.MaxTokenBudget}");
+            }
 
-                var bundle = _skillResolver.Resolve(_spaceContextAccessor.Current)
-                    ?? throw new HttpException(HttpStatusCode.ServiceUnavailable, "Skill runtime is not configured");
-                var loaded = await _bundleLoader.LoadAsync(bundle, budget, HttpContext.RequestAborted);
+            var bundle = _skillResolver.Resolve(_spaceContextAccessor.Current)
+                ?? throw new HttpException(HttpStatusCode.ServiceUnavailable, "Skill runtime is not configured");
+            var loaded = await _bundleLoader.LoadAsync(bundle, budget, HttpContext.RequestAborted);
 
-                return new SkillBundleVM
-                {
-                    SpaceKey = bundle.SpaceKey,
-                    Skills = loaded.Skills.Select(ToLoadedVM).ToList(),
-                    Workflow = loaded.Workflow is null ? null : ToLoadedVM(loaded.Workflow),
-                    OmittedSkillIds = loaded.OmittedSkillIds.ToList(),
-                    TokenEstimate = loaded.TokenEstimate,
-                    TokenBudget = budget
-                };
-            },
-            verify: false
-            );
+            return Ok(new SkillBundleVM
+            {
+                SpaceKey = bundle.SpaceKey,
+                Skills = loaded.Skills.Select(ToLoadedVM).ToList(),
+                Workflow = loaded.Workflow is null ? null : ToLoadedVM(loaded.Workflow),
+                OmittedSkillIds = loaded.OmittedSkillIds.ToList(),
+                TokenEstimate = loaded.TokenEstimate,
+                TokenBudget = budget
+            });
         }
 
         /// <summary>
@@ -91,21 +82,16 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status503ServiceUnavailable)]
         public IActionResult GetEffective()
         {
-            return _apiExecutorHandler.Run(() =>
-            {
-                var bundle = _skillResolver.Resolve(_spaceContextAccessor.Current)
-                    ?? throw new HttpException(HttpStatusCode.ServiceUnavailable, "Skill runtime is not configured");
+            var bundle = _skillResolver.Resolve(_spaceContextAccessor.Current)
+                ?? throw new HttpException(HttpStatusCode.ServiceUnavailable, "Skill runtime is not configured");
 
-                return new EffectiveSkillVM
-                {
-                    SpaceKey = bundle.SpaceKey,
-                    Skills = bundle.Skills.Select(ToVM).ToList(),
-                    Workflow = bundle.Workflow is null ? null : ToVM(bundle.Workflow),
-                    TokenEstimate = bundle.TokenEstimate
-                };
-            },
-            verify: false
-            );
+            return Ok(new EffectiveSkillVM
+            {
+                SpaceKey = bundle.SpaceKey,
+                Skills = bundle.Skills.Select(ToVM).ToList(),
+                Workflow = bundle.Workflow is null ? null : ToVM(bundle.Workflow),
+                TokenEstimate = bundle.TokenEstimate
+            });
         }
 
         private static LoadedArtifactVM ToLoadedVM(LoadedArtifact artifact) => new()

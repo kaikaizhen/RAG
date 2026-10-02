@@ -1,4 +1,4 @@
-﻿using Library.Extensions;
+using Library.Extensions;
 using Microsoft.EntityFrameworkCore;
 using RAG.Authentication;
 using RAG.Commons.Options;
@@ -21,16 +21,15 @@ namespace RAG.Extensions
         {
             services.AddOption(configuration)
                     .AddDb(configuration)
-                    .AddLibrary(
-                        "Kaikai", "Audience",
-                        env,
-                        swaggerOptions: s =>
-                        {
-                            s.Title = "RAG 應用平台";
-                            s.Version = "v1";
-                            s.Description = "這是一個RAG 應用平台API說明檔案";
-                        }
-                    )
+                    .AddLibraryExceptionHandling(configuration)
+                    .AddLibraryCors(configuration)
+                    .AddLibraryApiVersioning(configuration)
+                    .AddLibraryOpenApi(o =>
+                    {
+                        o.Title = "RAG 應用平台";
+                        o.Description = "這是一個RAG 應用平台API說明檔案";
+                    })
+                    .AddLibraryRepositories()
                     .AddNativeJwtAuthentication(configuration)
                     .AddSpaceRuntime()
                     .AddSkillRuntime(configuration, env)
@@ -62,10 +61,7 @@ namespace RAG.Extensions
         {
             services.AddDbContext<WenDaHubContext>(options =>
             {
-                options.UseMySql(
-                        configuration.GetConnectionString("DefaultConnection"),
-                       ServerVersion.AutoDetect(configuration.GetConnectionString("DefaultConnection"))
-                    );
+                options.UseMySQL(configuration.GetConnectionString("DefaultConnection")!);
             });
 
             return services;

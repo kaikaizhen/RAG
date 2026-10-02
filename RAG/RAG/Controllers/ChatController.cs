@@ -1,7 +1,6 @@
-﻿using Asp.Versioning;
+using Asp.Versioning;
 using AutoMapper;
 using Library.Http;
-using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.Models.Dtos.Chat;
@@ -23,18 +22,15 @@ namespace RAG.Controllers
     [Tags("回應功能模組")]
     public class ChatController : ControllerBase
     {
-        private readonly IApiExecutorHandler _apiExecutorHandler;
         private readonly IMapper _mapper;
         private readonly IChatService _chatService;
 
 
         public ChatController(
-            IApiExecutorHandler apiExecutorHandler,
             IMapper mapper,
             IChatService chatService
         )
         { 
-            _apiExecutorHandler = apiExecutorHandler;
             _mapper = mapper;
             _chatService = chatService;
         }
@@ -49,16 +45,10 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Chat([FromBody] SendChatParam request)
         {
-            return await _apiExecutorHandler.RunAsync(async (request) =>
-            {
-                var dto = _mapper.Map<ChatDto>(request);
-                var chat = await _chatService.SendChatAsync(dto);
+            var dto = _mapper.Map<ChatDto>(request);
+            var chat = await _chatService.SendChatAsync(dto);
 
-                return _mapper.Map<ChatVM>(chat);
-            },
-            verify:false,
-            parameter:request
-            );
+            return Ok(_mapper.Map<ChatVM>(chat));
         }
 
         [HttpPost(nameof(ChatStream))]
@@ -97,14 +87,9 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(List<GetChatHistoryVM>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetChatHistory()
         {
-            return await _apiExecutorHandler.RunAsync(async () =>
-            {
-                var chatHistorys = await _chatService.GetChatHistoryAsync();
+            var chatHistorys = await _chatService.GetChatHistoryAsync();
 
-                return _mapper.Map<List<GetChatHistoryVM>>(chatHistorys);
-            },
-            verify: false
-            );
+            return Ok(_mapper.Map<List<GetChatHistoryVM>>(chatHistorys));
         }
 
         /// <summary>
@@ -117,15 +102,9 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetChatLogHistory([FromRoute] string chatId)
         {
-            return await _apiExecutorHandler.RunAsync(async (chatId) =>
-            {
-                var chatLogHistorys = await _chatService.GetChatLogHistoryAsync(chatId);
+            var chatLogHistorys = await _chatService.GetChatLogHistoryAsync(chatId);
 
-                return _mapper.Map<List<GetChatLogHistoryVM>>(chatLogHistorys);
-            },
-            verify:false,
-            parameter:chatId
-            );
+            return Ok(_mapper.Map<List<GetChatLogHistoryVM>>(chatLogHistorys));
         }
 
         [HttpDelete("{chatId}")]
@@ -133,15 +112,9 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteChatHistory([FromRoute] string chatId)
         {
-            return await _apiExecutorHandler.RunAsync(async (chatId) =>
-            {
-                await _chatService.DeleteChatHistoryAsync(chatId);
+            await _chatService.DeleteChatHistoryAsync(chatId);
 
-                return $"Delete Chat{chatId} Success";
-            },
-            verify:false,
-            parameter:chatId
-            );
+            return Ok($"Delete Chat{chatId} Success");
         }
     }
 }

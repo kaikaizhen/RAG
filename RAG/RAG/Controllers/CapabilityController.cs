@@ -1,5 +1,4 @@
 using Asp.Versioning;
-using Library.Http.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RAG.SpaceRuntime;
@@ -19,17 +18,14 @@ namespace RAG.Controllers
     [Tags("Tool 功能模組")]
     public class CapabilityController : ControllerBase
     {
-        private readonly IApiExecutorHandler _apiExecutorHandler;
         private readonly ISpaceContextAccessor _spaceContextAccessor;
         private readonly ICapabilityResolver _capabilityResolver;
 
         public CapabilityController(
-            IApiExecutorHandler apiExecutorHandler,
             ISpaceContextAccessor spaceContextAccessor,
             ICapabilityResolver capabilityResolver
         )
         {
-            _apiExecutorHandler = apiExecutorHandler;
             _spaceContextAccessor = spaceContextAccessor;
             _capabilityResolver = capabilityResolver;
         }
@@ -41,12 +37,11 @@ namespace RAG.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            return _apiExecutorHandler.Run(() =>
-                _capabilityResolver.Resolve(_spaceContextAccessor.Current)
-                    .Select(c => new { c.Id, c.Description, Kind = c.Kind.ToString().ToLowerInvariant() })
-                    .ToList(),
-                verify: false
-            );
+            var capabilities = _capabilityResolver.Resolve(_spaceContextAccessor.Current)
+                .Select(c => new { c.Id, c.Description, Kind = c.Kind.ToString().ToLowerInvariant() })
+                .ToList();
+
+            return Ok(capabilities);
         }
     }
 }

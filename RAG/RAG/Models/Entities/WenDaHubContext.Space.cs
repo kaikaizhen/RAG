@@ -15,10 +15,10 @@ public partial class WenDaHubContext
     {
         // 與實際資料庫對齊：以下欄位在既有資料庫為 utf8mb4，但 scaffold model 未記錄
         // （2026-09-25 以 information_schema 比對開發資料庫確認）
-        modelBuilder.Entity<ChatHeader>().Property(e => e.Name).UseCollation("utf8mb4_unicode_ci").HasCharSet("utf8mb4");
-        modelBuilder.Entity<ChatLog>().Property(e => e.Questions).UseCollation("utf8mb4_unicode_ci").HasCharSet("utf8mb4");
-        modelBuilder.Entity<ChatLog>().Property(e => e.Answer).UseCollation("utf8mb4_unicode_ci").HasCharSet("utf8mb4");
-        modelBuilder.Entity<QaItemType>().Property(e => e.NameZh).UseCollation("utf8mb4_unicode_ci").HasCharSet("utf8mb4");
+        modelBuilder.Entity<ChatHeader>().Property(e => e.Name).UseCollation("utf8mb4_unicode_ci");
+        modelBuilder.Entity<ChatLog>().Property(e => e.Questions).UseCollation("utf8mb4_unicode_ci");
+        modelBuilder.Entity<ChatLog>().Property(e => e.Answer).UseCollation("utf8mb4_unicode_ci");
+        modelBuilder.Entity<QaItemType>().Property(e => e.NameZh).UseCollation("utf8mb4_unicode_ci");
 
         modelBuilder.Entity<Space>(entity =>
         {
@@ -30,8 +30,7 @@ public partial class WenDaHubContext
             entity.Property(e => e.Key).HasMaxLength(50);
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
-                .UseCollation("utf8mb4_unicode_ci")
-                .HasCharSet("utf8mb4");
+                .UseCollation("utf8mb4_unicode_ci");
             entity.Property(e => e.CreateAt)
                 .HasDefaultValueSql("current_timestamp()")
                 .HasColumnType("datetime");
