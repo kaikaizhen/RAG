@@ -30,6 +30,7 @@ namespace RAG.Extensions
                         o.Description = "這是一個RAG 應用平台API說明檔案";
                     })
                     .AddLibraryRepositories()
+                    .AddNumericSchemaNormalization()
                     .AddNativeJwtAuthentication(configuration)
                     .AddSpaceRuntime()
                     .AddSkillRuntime(configuration, env)

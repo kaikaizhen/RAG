@@ -502,7 +502,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    Id: number | string;
+                    Id: number;
                 };
                 cookie?: never;
             };
@@ -616,7 +616,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    Id: number | string;
+                    Id: number;
                 };
                 cookie?: never;
             };
@@ -646,7 +646,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    Id?: number | string;
+                    Id?: number;
                     Type?: components["schemas"]["QuestionEnum"];
                 };
                 header?: never;
@@ -733,7 +733,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    Id: number | string;
+                    Id: number;
                 };
                 cookie?: never;
             };
@@ -763,7 +763,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    tokenBudget?: number | string;
+                    tokenBudget?: number;
                 };
                 header?: never;
                 path?: never;
@@ -981,7 +981,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    Id: number | string;
+                    Id: number;
                 };
                 cookie?: never;
             };
@@ -1003,7 +1003,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    Id: number | string;
+                    Id: number;
                 };
                 cookie?: never;
             };
@@ -1095,7 +1095,7 @@ export interface components {
             name?: string;
             source?: string;
             /** Format: int32 */
-            tokenEstimate?: number | string;
+            tokenEstimate?: number;
         };
         ChatVM: {
             answer?: string;
@@ -1103,7 +1103,7 @@ export interface components {
         };
         CreateQaTypeItemParam: {
             /** Format: int32 */
-            qaTypeID: number | string;
+            qaTypeID: number;
             nameZh?: null | string;
             nameEn?: null | string;
             nameOther?: null | string;
@@ -1115,7 +1115,7 @@ export interface components {
         };
         CreateQuestionParam: {
             /** Format: int32 */
-            qaItemTypeID: number | string;
+            qaItemTypeID: number;
             question: string;
             answer: string;
             status?: null | string;
@@ -1129,7 +1129,7 @@ export interface components {
         };
         CurrentSpaceVM: {
             /** Format: int32 */
-            spaceID?: number | string;
+            spaceID?: number;
             key?: string;
             name?: string;
             role?: string;
@@ -1142,7 +1142,7 @@ export interface components {
             skills?: components["schemas"]["ArtifactVM"][];
             workflow?: null | components["schemas"]["ArtifactVM"];
             /** Format: int32 */
-            tokenEstimate?: number | string;
+            tokenEstimate?: number;
         };
         ErrorVM: {
             error?: string;
@@ -1159,11 +1159,11 @@ export interface components {
         };
         KnowledgeItemVM: {
             /** Format: int32 */
-            questionID?: number | string;
+            questionID?: number;
             question?: string;
             answer?: string;
             /** Format: double */
-            score?: number | string;
+            score?: number;
             status?: string;
         };
         KnowledgeSearchParam: {
@@ -1172,7 +1172,7 @@ export interface components {
         };
         KnowledgeSearchVM: {
             /** Format: int32 */
-            spaceID?: number | string;
+            spaceID?: number;
             spaceKey?: string;
             status?: string;
             evidence?: components["schemas"]["KnowledgeItemVM"][];
@@ -1185,7 +1185,7 @@ export interface components {
             source?: string;
             content?: string;
             /** Format: int32 */
-            tokenEstimate?: number | string;
+            tokenEstimate?: number;
         };
         LoginParam: {
             account: string;
@@ -1193,7 +1193,7 @@ export interface components {
         };
         LoginVM: {
             /** Format: int32 */
-            userID?: number | string;
+            userID?: number;
             name?: string;
             accessToken?: string;
             refreshToken?: string;
@@ -1214,13 +1214,13 @@ export interface components {
             workflow?: null | components["schemas"]["LoadedArtifactVM"];
             omittedSkillIds?: string[];
             /** Format: int32 */
-            tokenEstimate?: number | string;
+            tokenEstimate?: number;
             /** Format: int32 */
-            tokenBudget?: number | string;
+            tokenBudget?: number;
         };
         SpaceVM: {
             /** Format: int32 */
-            spaceID?: number | string;
+            spaceID?: number;
             key?: string;
             name?: string;
             role?: string;
@@ -1228,9 +1228,9 @@ export interface components {
         };
         UpdateQaTypeItemParam: {
             /** Format: int32 */
-            id: number | string;
+            id: number;
             /** Format: int32 */
-            qaTypeID: number | string;
+            qaTypeID: number;
             nameZh?: null | string;
             nameEn?: null | string;
             nameOther?: null | string;
@@ -1238,7 +1238,7 @@ export interface components {
         };
         UpdateQaTypeParam: {
             /** Format: int32 */
-            id: number | string;
+            id: number;
             nameZh?: null | string;
             nameEn?: null | string;
             nameOther?: null | string;
@@ -1246,16 +1246,16 @@ export interface components {
         };
         UpdateQuestionParam: {
             /** Format: int32 */
-            id: number | string;
+            id: number;
             /** Format: int32 */
-            qaItemTypeID: number | string;
+            qaItemTypeID: number;
             question: string;
             answer: string;
             status?: null | string;
         };
         UpdateUserParam: {
             /** Format: int32 */
-            id: number | string;
+            id: number;
             account: string;
             password: string;
             nameZh?: null | string;

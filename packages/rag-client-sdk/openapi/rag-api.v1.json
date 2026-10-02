@@ -611,11 +611,7 @@
             "description": "",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32"
             }
           }
@@ -715,11 +711,7 @@
             "description": "",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32"
             }
           }
@@ -743,11 +735,7 @@
             "in": "query",
             "description": "",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32"
             }
           },
@@ -842,11 +830,7 @@
             "description": "",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32"
             }
           }
@@ -870,11 +854,7 @@
             "in": "query",
             "description": "",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32"
             }
           }
@@ -1135,11 +1115,7 @@
             "description": "",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32"
             }
           }
@@ -1162,11 +1138,7 @@
             "description": "",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32"
             }
           }
@@ -1261,11 +1233,7 @@
             "type": "string"
           },
           "tokenEstimate": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           }
         }
@@ -1291,11 +1259,7 @@
         "type": "object",
         "properties": {
           "qaTypeID": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "nameZh": {
@@ -1350,11 +1314,7 @@
         "type": "object",
         "properties": {
           "qaItemTypeID": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "question": {
@@ -1408,11 +1368,7 @@
         "type": "object",
         "properties": {
           "spaceID": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "key": {
@@ -1467,11 +1423,7 @@
             ]
           },
           "tokenEstimate": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           }
         }
@@ -1514,11 +1466,7 @@
         "type": "object",
         "properties": {
           "questionID": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "question": {
@@ -1528,11 +1476,7 @@
             "type": "string"
           },
           "score": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
+            "type": "number",
             "format": "double"
           },
           "status": {
@@ -1561,11 +1505,7 @@
         "type": "object",
         "properties": {
           "spaceID": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "spaceKey": {
@@ -1607,11 +1547,7 @@
             "type": "string"
           },
           "tokenEstimate": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           }
         }
@@ -1635,11 +1571,7 @@
         "type": "object",
         "properties": {
           "userID": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "name": {
@@ -1722,19 +1654,11 @@
             }
           },
           "tokenEstimate": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "tokenBudget": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           }
         }
@@ -1743,11 +1667,7 @@
         "type": "object",
         "properties": {
           "spaceID": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "key": {
@@ -1772,19 +1692,11 @@
         "type": "object",
         "properties": {
           "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "qaTypeID": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "nameZh": {
@@ -1818,11 +1730,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "nameZh": {
@@ -1858,19 +1766,11 @@
         "type": "object",
         "properties": {
           "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "qaItemTypeID": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "question": {
@@ -1897,11 +1797,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "account": {
