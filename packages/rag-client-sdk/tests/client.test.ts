@@ -231,6 +231,17 @@ describe('error mapping', () => {
     expect(error).toMatchObject({ status, message: `server says ${status}` });
   });
 
+  it('uses ProblemDetails.detail (not the generic title) as the error message', async () => {
+    const problem = { type: 'https://tools.ietf.org/html/rfc9110#section-15.5.5', title: 'NotFound', status: 404, detail: '找不到足夠可靠的相關資料', instance: 'POST /api/v1/Chat' };
+    const { client, login } = signedIn({ 'POST /api/v1/Chat': () => ({ status: 404, body: problem }) });
+    await login();
+
+    const error = await client.chat.send('hi').catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(RagNotFoundError);
+    expect(error).toMatchObject({ status: 404, message: '找不到足夠可靠的相關資料', body: problem });
+  });
+
   it('url-encodes path parameters', async () => {
     const { client, server, login } = signedIn({});
     await login();

@@ -78,6 +78,8 @@ function extractMessage(body: unknown): string | undefined {
   if (typeof body === 'string' && body.length > 0) return body;
   if (body && typeof body === 'object') {
     const record = body as Record<string, unknown>;
+    // ProblemDetails（RFC 9457，.NET 例外處理）：真正的訊息在 detail，title 只是狀態文字
+    if (typeof record.detail === 'string' && record.detail.length > 0) return record.detail;
     if (typeof record.error === 'string') return record.error;
     if (typeof record.title === 'string') return record.title;
   }
