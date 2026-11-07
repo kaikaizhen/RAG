@@ -1,0 +1,264 @@
+{
+  "info": {
+    "name": "RAG AI（向量服務）",
+    "description": "匯入後到 Collection 的 Variables 填入 internalApiKey；baseUrl 預設為 NAS，本機測試改成 http://localhost:8007。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://rag.name404.com/ai"
+    },
+    {
+      "key": "internalApiKey",
+      "value": ""
+    },
+    {
+      "key": "questionId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "GET /",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [],
+          "query": []
+        },
+        "description": "Read Root"
+      }
+    },
+    {
+      "name": "POST /questionsToVector",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{internalApiKey}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/questionsToVector",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "questionsToVector"
+          ],
+          "query": []
+        },
+        "description": "Api Questions To Vector",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"space_id\": 1,\n  \"questions\": [\n    {\n      \"id\": 1,\n      \"referenceId\": null,\n      \"qaTypeId\": 1,\n      \"qaItemTypeId\": 1,\n      \"question\": \"範例問題\",\n      \"answer\": \"範例答案（支援 Markdown）\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /ask",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{internalApiKey}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/ask",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "ask"
+          ],
+          "query": []
+        },
+        "description": "Api Ask",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"space_id\": 1,\n  \"question\": \"什麼是三層式架構？\",\n  \"type\": null\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /search",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{internalApiKey}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/search",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "search"
+          ],
+          "query": []
+        },
+        "description": "Api Search",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"space_id\": 1,\n  \"query\": \"Docker 如何建置映像檔\",\n  \"limit\": 5,\n  \"type\": null\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "DELETE /questions/{question_id}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{internalApiKey}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/questions/{{questionId}}?space_id=1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "questions",
+            "{{questionId}}"
+          ],
+          "query": [
+            {
+              "key": "space_id",
+              "value": "1"
+            }
+          ]
+        },
+        "description": "Api Delete Question"
+      }
+    },
+    {
+      "name": "GET /collections",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{internalApiKey}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/collections",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections"
+          ],
+          "query": []
+        },
+        "description": "Api Get Collections"
+      }
+    },
+    {
+      "name": "GET /model_status",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{internalApiKey}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/model_status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "model_status"
+          ],
+          "query": []
+        },
+        "description": "Get Model Status"
+      }
+    },
+    {
+      "name": "GET /questions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{internalApiKey}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/questions?space_id=1&limit=100",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "questions"
+          ],
+          "query": [
+            {
+              "key": "space_id",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "description": "List Questions"
+      }
+    }
+  ]
+}

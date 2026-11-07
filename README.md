@@ -254,6 +254,17 @@ docker run -d -p 8007:8007 -e QDRANT_HOST=<qdrant-host> -e QDRANT_PORT=6333 --na
 | `DELETE` | `/questions/{question_id}`、`/delete_type/{type_value}` | 刪除指定問題 / 分類的向量 |
 | `GET` | `/collections` | 列出所有 Collection |
 
+### Postman 匯入
+
+`RAG_Server/docs/` 內有可直接匯入的檔案（由 `python RAG_Server/scripts/export_openapi.py` 產生，不含金鑰）：
+
+| 檔案 | 用途 |
+| --- | --- |
+| `rag-ai.postman_collection.json` | Postman Collection：每個端點都有範例，變數 `baseUrl`（預設 NAS 的 `/ai`）與 `internalApiKey` |
+| `rag-ai.openapi.json` | OpenAPI 3.1，可匯入 Postman / Swagger Editor 等工具 |
+
+匯入 Collection 後，在 **Variables** 填入 `internalApiKey`（對應伺服器的 `INTERNAL_API_KEY`），受保護的端點以 `X-Internal-Api-Key` 標頭驗證。
+
 ## 🛠️ 開發與測試
 
 ```bash
