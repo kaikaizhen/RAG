@@ -8,13 +8,13 @@ async function signedIn(fetchImpl: typeof fetch) {
   return new RagClient({ baseUrl: 'https://rag.test', tokenStore, fetch: fetchImpl });
 }
 
-function sseFetch(chunks: string[], status = 200): typeof fetch {
+function sseFetch(chunks: Array<string | Uint8Array>, status = 200): typeof fetch {
   const encoder = new TextEncoder();
   return async () =>
     new Response(
       new ReadableStream({
         start(controller) {
-          for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+          for (const chunk of chunks) controller.enqueue(typeof chunk === 'string' ? encoder.encode(chunk) : chunk);
           controller.close();
         },
       }),
@@ -42,6 +42,27 @@ describe('chat.stream', () => {
       { type: 'chat', chatId: '42' },
       { type: 'text', text: '好' },
     ]);
+  });
+
+  it('同一事件的多個 data 行以換行串接（新伺服器格式），文字中的換行與結尾換行都保留', async () => {
+    // 伺服器把 "第一行\n第二行\n" 這段文字送成 3 個 data 行（最後一行為空）
+    const client = await signedIn(sseFetch(['data: 第一行\ndata: 第二行\ndata: \n\n', 'data: 繼續\n\n']));
+    expect(await collect(client.chat.stream('hi'))).toBe('第一行\n第二行\n繼續');
+  });
+
+  it('只去掉 data: 後的一個空白：開頭的空白屬於內容', async () => {
+    const client = await signedIn(sseFetch(['data:  兩個空白\n\n']));
+    expect(await collect(client.chat.stream('hi'))).toBe(' 兩個空白');
+  });
+
+  it('網路在位元組中間切開（切在 emoji 的 UTF-8 序列中間）也能正確還原', async () => {
+    const emoji = '👍🏽👨‍👩‍👧‍👦';
+    const bytes = new TextEncoder().encode(`data: ${emoji}\n\ndata: 完\n\n`);
+    // 每 3 個位元組切一次：多數 emoji 是 4 位元組，一定會切在字元中間
+    const pieces: Uint8Array[] = [];
+    for (let i = 0; i < bytes.length; i += 3) pieces.push(bytes.slice(i, i + 3));
+    const client = await signedIn(sseFetch(pieces));
+    expect(await collect(client.chat.stream('hi'))).toBe(emoji + '完');
   });
 
   it('非 2xx 以 RagError 拋出', async () => {

@@ -352,18 +352,23 @@ function pathId(id: number): number {
   return id;
 }
 
-/** 解析一個 SSE 區塊；空 data = 換行字元；沒有 data 欄位回傳 null */
+/**
+ * 解析一個 SSE 區塊。依規格，同一事件的多個 data 行以 \n 串接（伺服器把文字中的換行拆成多個 data 行）；
+ * 只去掉 `data:` 後面的一個空白。
+ * 相容舊格式：舊伺服器逐字送出，換行字元會變成「單一個空的 data 行」，這種情況視為一個換行。
+ */
 function parseSseEvent(block: string): ChatStreamEvent | null {
   const lines = block.replace(/^\n+/, '').split('\n');
   let name = 'message';
-  let data: string | null = null;
+  const dataLines: string[] = [];
   for (const line of lines) {
     if (line.startsWith('event:')) name = line.slice('event:'.length).trim();
-    else if (line.startsWith('data:')) data = line.slice('data:'.length).replace(/^ /, '');
+    else if (line.startsWith('data:')) dataLines.push(line.slice('data:'.length).replace(/^ /, ''));
   }
-  if (data === null) return null;
+  if (dataLines.length === 0) return null;
+  const data = dataLines.length === 1 && dataLines[0] === '' ? '\n' : dataLines.join('\n');
   if (name === 'chat') return { type: 'chat', chatId: data.trim() };
-  return { type: 'text', text: data === '' ? '\n' : data };
+  return { type: 'text', text: data };
 }
 
 async function readBody(response: Response): Promise<unknown> {
