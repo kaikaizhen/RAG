@@ -8,8 +8,10 @@ import {
 /**
  * 全站共用的 RAG client。授權一律由伺服器決定，這裡只保存 token 與顯示用資料。
  *
- * Token 只放在記憶體與 sessionStorage（分頁關閉即清除），不使用 localStorage。
- * 注意：sessionStorage 仍可被頁面內的 XSS 讀取；要更嚴格需改為 httpOnly cookie 的 BFF。
+ * Token 放在記憶體與 localStorage，讓 PWA / 瀏覽器重開後仍保持登入（refresh token 滑動續期，
+ * 伺服器端有效期見 Jwt:RefreshTokenDays）。登出或 refresh 失敗時會清除。
+ * 注意：localStorage 可被頁面內的 XSS 讀取；回答以 Markdown 渲染且不允許原始 HTML，
+ * 要更嚴格需改為 httpOnly cookie 的 BFF。
  */
 const SESSION_KEY = "rag.session"
 const PROFILE_KEY = "rag.profile"
@@ -24,9 +26,22 @@ export interface Profile {
   manage: string
 }
 
+/** 舊版存在 sessionStorage，升級後第一次讀取時搬過來，避免已登入的人被登出 */
+function migrateLegacy(): void {
+  try {
+    for (const key of [SESSION_KEY, PROFILE_KEY, SPACE_KEY]) {
+      const legacy = window.sessionStorage.getItem(key)
+      if (legacy !== null && window.localStorage.getItem(key) === null) window.localStorage.setItem(key, legacy)
+      window.sessionStorage.removeItem(key)
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 function read<T>(key: string): T | null {
   try {
-    const raw = window.sessionStorage.getItem(key)
+    const raw = window.localStorage.getItem(key)
     return raw ? (JSON.parse(raw) as T) : null
   } catch {
     return null
@@ -35,7 +50,7 @@ function read<T>(key: string): T | null {
 
 function write(key: string, value: unknown): void {
   try {
-    window.sessionStorage.setItem(key, JSON.stringify(value))
+    window.localStorage.setItem(key, JSON.stringify(value))
   } catch {
     /* 無痕模式或被封鎖時只保留在記憶體 */
   }
@@ -43,7 +58,7 @@ function write(key: string, value: unknown): void {
 
 function remove(key: string): void {
   try {
-    window.sessionStorage.removeItem(key)
+    window.localStorage.removeItem(key)
   } catch {
     /* ignore */
   }
@@ -75,6 +90,7 @@ let client: RagClient | null = null
 export function getClient(): RagClient {
   if (client) return client
   if (typeof window === "undefined") throw new Error("getClient() 只能在瀏覽器端使用")
+  migrateLegacy()
   client = new RagClient({ baseUrl: API_BASE_URL || window.location.origin, tokenStore: new BrowserTokenStore() })
   const savedSpace = read<number>(SPACE_KEY)
   if (savedSpace) client.spaces.select(savedSpace)

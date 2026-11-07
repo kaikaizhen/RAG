@@ -31,9 +31,13 @@ namespace RAG.Authentication
 
         public string Audience { get; init; } = "Audience";
 
-        public TimeSpan AccessTokenLifetime { get; init; } = TimeSpan.FromHours(3);
+        private static readonly TimeSpan DefaultAccessTokenLifetime = TimeSpan.FromHours(3);
 
-        public TimeSpan RefreshTokenLifetime { get; init; } = TimeSpan.FromHours(8);
+        private static readonly TimeSpan DefaultRefreshTokenLifetime = TimeSpan.FromDays(30);
+
+        public TimeSpan AccessTokenLifetime { get; init; } = DefaultAccessTokenLifetime;
+
+        public TimeSpan RefreshTokenLifetime { get; init; } = DefaultRefreshTokenLifetime;
 
         public required byte[] SigningKey { get; init; }
 
@@ -75,9 +79,15 @@ namespace RAG.Authentication
             {
                 Issuer = section["Issuer"] is { Length: > 0 } issuer ? issuer : "Kaikai",
                 Audience = section["Audience"] is { Length: > 0 } audience ? audience : "Audience",
+                // refresh token 每次 refresh 都會重新簽發，等於滑動視窗：連續 N 天內有使用就不會被登出
+                AccessTokenLifetime = ReadLifetime(section["AccessTokenMinutes"], TimeSpan.FromMinutes, DefaultAccessTokenLifetime),
+                RefreshTokenLifetime = ReadLifetime(section["RefreshTokenDays"], TimeSpan.FromDays, DefaultRefreshTokenLifetime),
                 SigningKey = Encoding.UTF8.GetBytes(secretKey)
             };
         }
+
+        private static TimeSpan ReadLifetime(string? value, Func<double, TimeSpan> unit, TimeSpan fallback)
+            => double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var n) && n > 0 ? unit(n) : fallback;
 
         private static string ReadSecretKey(string secretFilePath)
         {
