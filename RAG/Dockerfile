@@ -6,7 +6,9 @@ EXPOSE 8080
 
 
 # 此階段是用來組建服務專案
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# 建置階段用本機原生架構（BUILDPLATFORM）：在 Apple Silicon 上以 --platform linux/amd64 建置時，
+# .NET SDK 於 x64 模擬下會 segfault。發佈結果與架構無關（UseAppHost=false），最終映像仍是目標架構的 aspnet。
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
