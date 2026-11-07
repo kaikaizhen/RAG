@@ -15,6 +15,7 @@ const SESSION_KEY = "rag.session"
 const PROFILE_KEY = "rag.profile"
 const SPACE_KEY = "rag.space"
 
+/** 後端位址。留空代表與網站同網域（例如 Nginx 把 /api/ 轉給後端），此時使用目前網址的來源 */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_RAG_API_URL ?? ""
 
 export interface Profile {
@@ -74,7 +75,7 @@ let client: RagClient | null = null
 export function getClient(): RagClient {
   if (client) return client
   if (typeof window === "undefined") throw new Error("getClient() 只能在瀏覽器端使用")
-  client = new RagClient({ baseUrl: API_BASE_URL, tokenStore: new BrowserTokenStore() })
+  client = new RagClient({ baseUrl: API_BASE_URL || window.location.origin, tokenStore: new BrowserTokenStore() })
   const savedSpace = read<number>(SPACE_KEY)
   if (savedSpace) client.spaces.select(savedSpace)
   client.on("space-changed", ({ spaceId }) => {
