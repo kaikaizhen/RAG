@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>目前離線 - RAGence</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        font-family: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif;
+        background: #fff; color: #171717; text-align: center; padding: 24px; box-sizing: border-box;
+      }
+      @media (prefers-color-scheme: dark) { body { background: #0a0a0a; color: #ededed; } img { filter: invert(1); } }
+      main { max-width: 360px; }
+      img { width: 120px; height: 120px; }
+      h1 { font-size: 1.25rem; margin: 16px 0 8px; }
+      p { margin: 0 0 20px; line-height: 1.6; opacity: .75; }
+      button { font: inherit; padding: 10px 20px; border-radius: 999px; border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="RAGence" />
+      <h1>目前沒有網路連線</h1>
+      <p>問答需要連線到伺服器才能使用。請確認網路後再試一次。</p>
+      <button type="button" onclick="location.reload()">重新載入</button>
+    </main>
+  </body>
+</html>
