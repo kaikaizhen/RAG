@@ -19,6 +19,11 @@ namespace RAG.Tests.Infrastructure
         public bool FailDelete { get; set; }
 
         /// <summary>
+        /// 指定 AskAsync 回傳的答案（測試串流輸出用）；null 時使用預設的 answer-from-space-N
+        /// </summary>
+        public string? AnswerOverride { get; set; }
+
+        /// <summary>
         /// SearchAsync 依 space 回傳的命中結果
         /// </summary>
         public ConcurrentDictionary<int, List<RagSearchHit>> SearchHits { get; } = new();
@@ -28,6 +33,7 @@ namespace RAG.Tests.Infrastructure
             Calls.Clear();
             FailUpsert = false;
             FailDelete = false;
+            AnswerOverride = null;
             SearchHits.Clear();
         }
 
@@ -42,7 +48,7 @@ namespace RAG.Tests.Infrastructure
         public Task<ChatReponseDto> AskAsync(RagScope scope, string question, string? type, CancellationToken cancellationToken = default)
         {
             Calls.Enqueue(new Call("ask", scope.SpaceId, null, null, question));
-            return Task.FromResult(new ChatReponseDto { Answer = $"answer-from-space-{scope.SpaceId}", Related = new List<string> { "related" } });
+            return Task.FromResult(new ChatReponseDto { Answer = AnswerOverride ?? $"answer-from-space-{scope.SpaceId}", Related = new List<string> { "related" } });
         }
 
         public Task<IReadOnlyList<RagSearchHit>> SearchAsync(RagScope scope, string query, int limit, string? type, CancellationToken cancellationToken = default)

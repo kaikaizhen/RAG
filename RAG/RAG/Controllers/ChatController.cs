@@ -9,6 +9,7 @@ using RAG.Models.Params.Chat;
 using RAG.Models.ViewModels;
 using RAG.Models.ViewModels.Chat;
 using RAG.Services.Interfaces;
+using RAG.Streaming;
 using RAG.Spaces;
 using System;
 
@@ -67,20 +68,26 @@ namespace RAG.Controllers
                 return;
             }
 
-            // 先送出聊天室編號（命名事件），前端據此延續同一個對話
-            await Response.WriteAsync($"event: chat\ndata: {chat.ChatId}\n\n");
-            await Response.Body.FlushAsync();
-
-            var answer = chat.Answer;
-            var random = new Random();
-
-            foreach (var ch in answer)
+            // 使用者按「停止」或斷線時，RequestAborted 會被觸發，不再繼續送
+            var aborted = HttpContext.RequestAborted;
+            try
             {
-                await Response.WriteAsync($"data: {ch}\n\n");
-                await Response.Body.FlushAsync();
-                await Task.Delay(random.Next(15, 50));
+                // 先送出聊天室編號（命名事件），前端據此延續同一個對話
+                await Response.WriteAsync($"event: chat\ndata: {chat.ChatId}\n\n", aborted);
+                await Response.Body.FlushAsync(aborted);
+
+                // 答案早已算好，這裡只是逐段顯示的效果：以文字元素為單位、段數有上限，答案再長也在約 1.5 秒內送完
+                foreach (var chunk in SseText.Chunk(chat.Answer))
+                {
+                    await Response.WriteAsync(SseText.FormatData(chunk), aborted);
+                    await Response.Body.FlushAsync(aborted);
+                    await Task.Delay(SseText.DelayMilliseconds, aborted);
+                }
             }
-            await Response.Body.FlushAsync();
+            catch (OperationCanceledException)
+            {
+                // 用戶端中止：正常情況，不需要記錄為錯誤
+            }
         }
 
         /// <summary>
