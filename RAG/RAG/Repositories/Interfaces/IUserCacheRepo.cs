@@ -1,17 +1,16 @@
-﻿using Library.Repo.Interfaces;
+using Library.Repo.Interfaces;
 using RAG.Models.Entities;
 
 namespace RAG.Repositories.Interfaces
 {
-    public interface IUserCacheRepo:IBaseRepo<WenDaHubContext, UserCache>
+    public interface IUserCacheRepo:IRagRepo<UserCache>
     {
         /// <summary>
-        /// 查詢使用者(根據帳號密碼)
+        /// 查詢使用者(根據帳號；密碼由呼叫端以 IPasswordHasher 驗證)
         /// </summary>
         /// <param name="account"></param>
-        /// <param name="password"></param>
         /// <returns></returns>
-        Task<UserCache?> GetUserByAccountAndPasswordAsync(string account, string password);
+        Task<UserCache?> GetByAccountAsync(string account);
 
         /// <summary>
         /// 查詢是否已經有該使用者帳號
@@ -26,27 +25,6 @@ namespace RAG.Repositories.Interfaces
         /// <param name="Id"></param>
         /// <returns></returns>
         Task<UserCache?> GetByIdAsync(int Id);
-
-        /// <summary>
-        /// 新增使用者
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        Task AddAsync(UserCache entity);
-
-        /// <summary>
-        /// 更新使用者
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        Task UpdateAsync(UserCache entity);
-
-        /// <summary>
-        /// 刪除使用者
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        Task DeleteAsync(UserCache entity);
 
     }
 }

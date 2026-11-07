@@ -70,6 +70,9 @@
 │   ├── Dockerfile
 │   └── docker-compose.yml
 │
+├── apps/web/                   # Next.js 前端（使用 packages/rag-client-sdk）
+├── packages/rag-client-sdk/    # 共用 TypeScript client SDK
+│
 └── RAG_Server/                 # Python FastAPI 向量服務
     ├── main.py
     ├── requirements.txt
@@ -89,8 +92,8 @@
 | 物件映射 | AutoMapper 14 |
 | 驗證 | JWT（Access Token / Refresh Token） |
 | 向量服務 | Python 3.11、FastAPI、Uvicorn、Pydantic v2 |
-| 向量資料庫 | Qdrant（384 維、Cosine 距離） |
-| 模型 | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`（多語系向量）<br>`uer/roberta-base-chinese-extractive-qa`（中文抽取式 QA） |
+| 向量資料庫 | Qdrant（1024 維、Cosine 距離） |
+| Embedding | 遠端 Ollama `qwen3-embedding:0.6b`（`/api/embed`，1024 維）；本服務不載入本地模型 |
 | 容器化 | Docker、Docker Compose |
 
 ---
@@ -131,8 +134,8 @@ docker run -d -p 6333:6333 --name qdrant qdrant/qdrant
 uvicorn main:app --host 0.0.0.0 --port 8007
 ```
 
-服務啟動後會在背景執行緒載入模型（首次會下載模型檔，需要一些時間）。
-可透過 `GET /model_status` 查詢載入進度，`loaded` 表示可正常提供服務。
+Embedding 由遠端 Ollama 提供（`OLLAMA_BASE_URL`），啟動時不載入任何模型。
+可透過 `GET /model_status` 檢查 Ollama 狀態，`status: ok` 表示可連線且已安裝指定模型；Ollama 失敗時寫入與查詢回 503，不 fallback。
 
 ### 2. RAG（.NET API）
 
@@ -155,6 +158,38 @@ dotnet run --project RAG/RAG.csproj
 ```
 
 預設位址：`http://localhost:5115`，Swagger 文件於 `http://localhost:5115/swagger`。
+
+---
+
+## 自行註冊與 Gmail 驗證信
+
+預設**關閉**。開啟後任何人都能以信箱註冊：
+
+1. `POST /api/v1/Auth/Register` 收到信箱與密碼 → 寄出驗證信（不論信箱是否已註冊，回應都相同，避免被用來探測帳號）。
+2. 使用者點信中連結 → 前端 `/verify-email?token=…` 呼叫 `POST /api/v1/Auth/VerifyEmail`。
+3. **此時才建立帳號**，並建立專屬的個人 Space（`u-<使用者編號>`，角色 owner、預設）。每個人的知識庫與對話都只存在自己的 Space，不會互相污染。
+
+設計重點：註冊資料（含密碼雜湊）以 AES-GCM 加密放在驗證連結內，連結 24 小時有效；在點擊之前資料庫裡不存在該帳號，
+所以不會有人搶先用別人的信箱註冊並佔住帳號。密碼一律以 PBKDF2-SHA512（210,000 次）儲存；既有的明文密碼在下次登入成功時自動升級。
+`POST /api/v1/User` 仍需登入，不是公開端點。
+
+**設定（環境變數，見 `RAG/.env.example`）**
+
+| 變數 | 說明 |
+| --- | --- |
+| `REGISTRATION_ENABLED` | `true` 才開放；預設 `false`。啟用時缺少下列任何設定，API 會直接啟動失敗 |
+| `REGISTRATION_VERIFY_URL_BASE` | 前端驗證頁的完整網址，例如 `https://<前端網域>/verify-email` |
+| `MAIL_HOST` / `MAIL_PORT` / `MAIL_USE_SSL` | Gmail：`smtp.gmail.com` / `587` / `true` |
+| `MAIL_ACCOUNT` / `MAIL_PASSWORD` | Gmail 帳號與**應用程式密碼** |
+
+Gmail 需先開啟兩步驟驗證，再到 Google 帳戶的「應用程式密碼」建立一組 16 碼密碼（不是登入密碼）。
+這組密碼只放在伺服器的 `.env` / 環境變數（`Library__Mail__Password`），**不要**寫進程式碼、設定檔範本或對話。
+
+**上線順序**：① 備份 `UserCache` 後執行 `RAG/RAG/Migrations/Scripts/20261107-email-registration-columns.sql`（放寬 `Account`、`Password` 長度）
+→ ② 部署新版 API → ③ 設定上述變數並把 `REGISTRATION_ENABLED` 設為 `true`。順序反了，新版寫入長值時舊欄位會被資料庫拒絕。
+
+**防濫用**：註冊端點全域每分鐘 30 次、驗證端點每個來源 IP 每分鐘 60 次、同一信箱 60 秒內只寄一次。
+尚未做：圖形驗證（例如 Cloudflare Turnstile）、每個使用者的知識庫 / 向量用量上限；開放給陌生人之前建議補上。
 
 ---
 
@@ -206,7 +241,11 @@ docker run -d -p 8007:8007 \
 | --- | --- | --- |
 | `QDRANT_HOST` | `localhost` | Qdrant 主機 |
 | `QDRANT_PORT` | `6333` | Qdrant 連接埠 |
-| `QDRANT_COLLECTION` | `rag_knowledge` | Collection 名稱 |
+| `QDRANT_COLLECTION` | `rag_knowledge_v2` | Collection 名稱（更換 embedding 模型必須使用新 collection） |
+| `OLLAMA_BASE_URL` | `http://192.168.0.188:11434` | Ollama 位址 |
+| `OLLAMA_EMBED_MODEL` | `qwen3-embedding:0.6b` | Embedding 模型 |
+| `EMBEDDING_DIMENSION` | `1024` | 向量維度（與回傳維度不符時拒絕寫入 / 查詢） |
+| `DIRECT_MATCH_THRESHOLD` / `DIRECT_MATCH_MARGIN` / `SIMILAR_SCORE_THRESHOLD` | `0.70` / `0.05` / `0.50` | `/ask` 判斷門檻（依 qwen3 校準）；`DIRECT_MATCH_THRESHOLD`、`SIMILAR_SCORE_THRESHOLD` 與 .NET ContextRuntime 共用同一組值 |
 | `CORS_ORIGINS` | `*` | 允許來源，多筆以逗號分隔 |
 
 ---
@@ -241,7 +280,7 @@ docker run -d -p 8007:8007 \
 | 方法 | 路徑 | 說明 |
 | --- | --- | --- |
 | `GET` | `/` | 服務與模型狀態 |
-| `GET` | `/model_status` | 模型載入狀態 |
+| `GET` | `/model_status` | Ollama embedding 狀態 |
 | `POST` | `/questionsToVector` | 批次將問題轉向量並寫入 Qdrant |
 | `POST` | `/ask` | 語意檢索並產生回答 |
 | `GET` | `/questions` | 列出已建立的問題（預設上限 100 筆） |

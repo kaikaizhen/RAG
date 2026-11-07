@@ -5,6 +5,12 @@ namespace RAG.Models.Dtos.RagServer
     public class SendChatDto
     {
         /// <summary>
+        /// Space 範圍（僅由 RagGateway 依 RagScope 設定）
+        /// </summary>
+        [JsonProperty("space_id")]
+        public int SpaceId { get; set; }
+
+        /// <summary>
         /// 問題描述
         /// </summary>
         [JsonProperty("question")]

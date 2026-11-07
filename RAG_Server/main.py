@@ -1,27 +1,45 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from typing import Optional, List
+import hmac
 import os
 import uuid
-import threading
-import time
+import requests
 
 # ==============================
 # 環境設定（請透過 .env 或環境變數提供）
 # ==============================
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
-COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "rag_knowledge")
+# 測試可設定 QDRANT_LOCATION=":memory:"；設定後優先於 host / port
+QDRANT_LOCATION = os.getenv("QDRANT_LOCATION", "")
+# 更換 embedding 模型必須使用新 collection（舊 rag_knowledge_bge_m3 為 bge-m3 向量，保留供回退）
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "rag_knowledge_v2")
+# Embedding 由遠端 Ollama 提供，本服務不載入任何本地模型；Ollama 失敗時直接回 503，不 fallback
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://192.168.0.188:11434").rstrip("/")
+OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "qwen3-embedding:0.6b")
+EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "1024"))
+OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "30"))
+OLLAMA_HEALTH_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_HEALTH_TIMEOUT_SECONDS", "3"))
+# /ask 判斷門檻（與 .NET ContextRuntime 由 compose/.env 注入同一組值）；依 qwen3-embedding:0.6b 校準（見 docs/calibration）
+DIRECT_MATCH_THRESHOLD = float(os.getenv("DIRECT_MATCH_THRESHOLD", "0.7"))
+DIRECT_MATCH_MARGIN = float(os.getenv("DIRECT_MATCH_MARGIN", "0.05"))
+SIMILAR_SCORE_THRESHOLD = float(os.getenv("SIMILAR_SCORE_THRESHOLD", "0.50"))
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
+# .NET API 與本服務共用的內部金鑰；未設定時所有受保護端點一律拒絕（fail-closed）
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
+
+SPACE_ID_KEY = "space_id"
 
 # ==============================
 # 初始化 FastAPI
 # ==============================
-app = FastAPI(title="RAG API")
+# root_path 讓服務可以掛在 Nginx 的 /ai/ 前綴之下，docs / openapi.json 連結才會正確
+app = FastAPI(title="RAG API", root_path=os.getenv("RAG_ROOT_PATH", ""))
 
 # 啟用 CORS（跨域設定）
 app.add_middleware(
@@ -35,63 +53,57 @@ app.add_middleware(
 # ==============================
 # 初始化 Qdrant
 # ==============================
-client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+client = QdrantClient(location=QDRANT_LOCATION) if QDRANT_LOCATION else QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
 
-# 全域變數用於快取模型
-_model = None
-_qa_model = None
-_model_loading = False
-_qa_model_loading = False
+_space_index_ready = False
 
 
 # ==============================
-# 模型載入
+# 內部服務驗證
 # ==============================
-def load_models_background():
-    """在背景執行緒中載入模型"""
-    global _model, _qa_model, _model_loading, _qa_model_loading
-    
-    if not _model_loading:
-        _model_loading = True
-        try:
-            print("背景載入 SentenceTransformer 模型...")
-            from sentence_transformers import SentenceTransformer
-            _model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-            print("SentenceTransformer 模型載入完成")
-        except Exception as e:
-            print(f"SentenceTransformer 載入失敗: {e}")
-        _model_loading = False
-    
-    if not _qa_model_loading:
-        _qa_model_loading = True
-        try:
-            print("背景載入 QA 模型...")
-            from transformers import pipeline
-            _qa_model = pipeline("question-answering", model="uer/roberta-base-chinese-extractive-qa")
-            print("QA 模型載入完成")
-        except Exception as e:
-            print(f"QA 模型載入失敗: {e}")
-        _qa_model_loading = False
+def require_internal_key(x_internal_api_key: Optional[str] = Header(default=None)):
+    """僅允許持有內部金鑰的 .NET API 呼叫；以常數時間比對"""
+    if not INTERNAL_API_KEY or not x_internal_api_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not hmac.compare_digest(x_internal_api_key.encode("utf-8"), INTERNAL_API_KEY.encode("utf-8")):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
-def get_sentence_model():
-    """取得 sentence transformer 模型"""
-    global _model, _model_loading
-    if _model is None and not _model_loading:
-        thread = threading.Thread(target=load_models_background)
-        thread.daemon = True
-        thread.start()
-    return _model
+# ==============================
+# Embedding（遠端 Ollama）
+# ==============================
+def embed_text(text: str) -> List[float]:
+    """呼叫 Ollama /api/embed；逾時、錯誤、格式或維度不符一律回 503，不 fallback 本地模型"""
+    try:
+        response = requests.post(
+            f"{OLLAMA_BASE_URL}/api/embed",
+            json={"model": OLLAMA_EMBED_MODEL, "input": text},
+            timeout=OLLAMA_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        embeddings = response.json().get("embeddings")
+    except (requests.RequestException, ValueError) as e:
+        print(f"Ollama embedding 失敗: {e}")
+        raise HTTPException(status_code=503, detail="Embedding 服務無法使用，請稍後再試")
+    if not embeddings or not isinstance(embeddings[0], list):
+        raise HTTPException(status_code=503, detail="Embedding 服務回應格式錯誤")
+    vector = embeddings[0]
+    if len(vector) != EMBEDDING_DIMENSION:
+        print(f"Embedding 維度 {len(vector)} 與設定 {EMBEDDING_DIMENSION} 不符")
+        raise HTTPException(status_code=503, detail=f"Embedding 維度 {len(vector)} 與設定 {EMBEDDING_DIMENSION} 不符")
+    return vector
 
 
-def get_qa_model():
-    """取得 QA 模型"""
-    global _qa_model, _qa_model_loading
-    if _qa_model is None and not _qa_model_loading:
-        thread = threading.Thread(target=load_models_background)
-        thread.daemon = True
-        thread.start()
-    return _qa_model
+def ollama_health() -> dict:
+    """檢查 Ollama 是否可連線且已安裝指定的 embedding 模型"""
+    try:
+        response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=OLLAMA_HEALTH_TIMEOUT_SECONDS)
+        response.raise_for_status()
+        names = {m.get("name") for m in response.json().get("models", [])}
+    except (requests.RequestException, ValueError):
+        return {"status": "unreachable", "model": OLLAMA_EMBED_MODEL, "dimension": EMBEDDING_DIMENSION}
+    status = "ok" if OLLAMA_EMBED_MODEL in names or f"{OLLAMA_EMBED_MODEL}:latest" in names else "model_missing"
+    return {"status": status, "model": OLLAMA_EMBED_MODEL, "dimension": EMBEDDING_DIMENSION}
 
 
 # ==============================
@@ -107,6 +119,7 @@ class CaseInsensitiveModel(BaseModel):
 class QdrantPayload(CaseInsensitiveModel):
     id: Optional[str] = Field(default=None)
     referenId: Optional[str] = Field(default=None)
+    space_id: int
     type: str
     question: str
     answer: str
@@ -132,11 +145,21 @@ class QuestionRequest(CaseInsensitiveModel):
 
 
 class QuestionListRequest(CaseInsensitiveModel):
+    # 由 .NET API 依已驗證的 SpaceContext 決定；本服務只信任持有內部金鑰的呼叫者
+    space_id: int = Field(gt=0)
     questions: List[QuestionRequest]
 
 
 class AskRequest(CaseInsensitiveModel):
+    space_id: int = Field(gt=0)
     question: str
+    type: Optional[str] = None
+
+
+class SearchRequest(CaseInsensitiveModel):
+    space_id: int = Field(gt=0)
+    query: str = Field(min_length=1, max_length=2000)
+    limit: int = Field(default=10, ge=1, le=50)
     type: Optional[str] = None
 
 
@@ -155,17 +178,55 @@ def dedup_text(text: str) -> str:
     return "。".join(result) + ("。" if result else "")
 
 
+def space_filter(space_id: int, *conditions) -> models.Filter:
+    """所有讀寫刪都必須帶的 Space 範圍條件"""
+    return models.Filter(
+        must=[models.FieldCondition(key=SPACE_ID_KEY, match=models.MatchValue(value=space_id)), *conditions]
+    )
+
+
+def find_points_in_space(space_id: int, point_ids: List[str]):
+    """只在指定 Space 內依 ID 取得 point（其他 Space 的同 ID point 視為不存在）"""
+    points, _ = client.scroll(
+        collection_name=COLLECTION_NAME,
+        scroll_filter=space_filter(space_id, models.HasIdCondition(has_id=point_ids)),
+        limit=len(point_ids),
+        with_payload=True,
+        with_vectors=False,
+    )
+    return points
+
+
 # ==============================
 # 核心功能
 # ==============================
-def ensure_collection(collection_name: str = COLLECTION_NAME):
-    """確保 Collection 存在"""
-    collections = [c.name for c in client.get_collections().collections]
-    if collection_name not in collections:
-        client.recreate_collection(
+def ensure_collection(vector_size: Optional[int] = None, collection_name: str = COLLECTION_NAME) -> bool:
+    """
+    確保 Collection 與 space_id payload index 存在。
+    vector_size 為 None（讀取 / 刪除）且 collection 不存在時回傳 False，不建立；
+    collection 維度與 embedding 設定不符時拒絕操作，避免混入不相容的向量。
+    """
+    global _space_index_ready
+    if not client.collection_exists(collection_name):
+        if vector_size is None:
+            return False
+        client.create_collection(
             collection_name=collection_name,
-            vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE)
+            vectors_config=models.VectorParams(size=vector_size, distance=models.Distance.COSINE)
         )
+        _space_index_ready = False
+    elif vector_size is not None:
+        existing = client.get_collection(collection_name).config.params.vectors.size
+        if existing != vector_size:
+            raise HTTPException(status_code=500, detail=f"Collection 維度 {existing} 與 embedding 設定維度 {vector_size} 不符")
+    if not _space_index_ready:
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name=SPACE_ID_KEY,
+            field_schema=models.PayloadSchemaType.INTEGER,
+        )
+        _space_index_ready = True
+    return True
 
 
 def insert_vectors(collection_name: str, vectors: List[dict]):
@@ -181,20 +242,24 @@ def insert_vectors(collection_name: str, vectors: List[dict]):
 
 
 def process_questions_to_vector(request: QuestionListRequest):
-    """將問題轉向量並寫入 Qdrant"""
-    ensure_collection()
-    model = get_sentence_model()
-    
-    if model is None:
-        return {"status": "loading", "message": "模型正在載入中，請稍後再試"}
-    
+    """將問題轉向量並寫入 Qdrant（僅限指定 Space）"""
+    ensure_collection(EMBEDDING_DIMENSION)
+
+    # 既有 ID 必須屬於同一個 Space，避免以猜測的 ID 覆寫其他 Space 的向量
+    reference_ids = [q.referenceId for q in request.questions if q.referenceId]
+    if reference_ids:
+        existing = client.retrieve(collection_name=COLLECTION_NAME, ids=reference_ids, with_payload=True)
+        if any((p.payload or {}).get(SPACE_ID_KEY) != request.space_id for p in existing):
+            raise HTTPException(status_code=403, detail="向量不屬於此範圍")
+
     vectors = []
     for q in request.questions:
         try:
-            vector = model.encode(q.question).tolist()
+            vector = embed_text(q.question)
             payload = QdrantPayload(
                 id=q.referenceId if q.referenceId else str(uuid.uuid4()),
                 referenId=str(q.id),
+                space_id=request.space_id,
                 type=str(q.qaTypeId),
                 question=q.question,
                 answer=q.answer,
@@ -202,8 +267,10 @@ def process_questions_to_vector(request: QuestionListRequest):
             vectors.append({
                 "id": payload.id,
                 "vector": vector,
-                "payload": payload.dict()
+                "payload": payload.model_dump(mode="json")
             })
+        except HTTPException:
+            raise
         except Exception as e:
             print(f"處理問題時發生錯誤: {e}")
             raise HTTPException(status_code=400, detail=f"處理問題時發生錯誤")
@@ -216,27 +283,22 @@ def process_questions_to_vector(request: QuestionListRequest):
 
 
 def generate_answer(request: AskRequest):
-    """查詢 Qdrant 並產生回答"""
-    ensure_collection()
-    model = get_sentence_model()
-    
-    if model is None:
-        raise HTTPException(status_code=400, detail="模型正在載入中，請稍後再試")
+    """查詢 Qdrant 並產生回答（僅搜尋指定 Space）"""
+    if not ensure_collection(EMBEDDING_DIMENSION):
+        raise HTTPException(status_code=400, detail="找不到相關內容")
 
-    query_vector = model.encode(request.question).tolist()
+    query_vector = embed_text(request.question)
 
-    query_filter = None
+    extra = []
     if request.type:
-        query_filter = models.Filter(
-            must=[models.FieldCondition(key="type", match=models.MatchValue(value=request.type))]
-        )
+        extra.append(models.FieldCondition(key="type", match=models.MatchValue(value=request.type)))
 
     results = client.search(
         collection_name=COLLECTION_NAME,
         query_vector=query_vector,
         limit=3,
         with_payload=True,
-        query_filter=query_filter
+        query_filter=space_filter(request.space_id, *extra)
     )
 
     if not results:
@@ -253,24 +315,27 @@ def generate_answer(request: AskRequest):
 
     context = "\n".join(unique_answers)
 
-    # 選擇最相似的一筆
-    best_match = max(results, key=lambda r: r.score)
+    # results 依分數由高到低；direct match 需同時超過門檻且與第二名拉開差距
+    best_match = results[0]
+    confidence = best_match.score
+    margin = confidence - results[1].score if len(results) > 1 else confidence
 
-    if best_match and best_match.score > 0.7:
+    if confidence < SIMILAR_SCORE_THRESHOLD:
+        raise HTTPException(status_code=400, detail="找不到足夠可靠的相關內容")
+
+    if confidence >= DIRECT_MATCH_THRESHOLD and margin >= DIRECT_MATCH_MARGIN:
         print("執行直接匹配")
         answer = best_match.payload["answer"]
-        confidence = best_match.score
         method = "direct_match"
     else:
         print("執行內容摘要")
         answer = f"根據相關內容：{context[:500]}..." if len(context) > 500 else context
-        confidence = best_match.score
         method = "context_summary"
 
     # 去除句子重複
     answer = dedup_text(answer)
 
-    print(f"回答方式: {method}, 信心度: {confidence}")
+    print(f"回答方式: {method}, 信心度: {confidence}, 與第二名差距: {margin}")
     return {
         "answer": answer,
         "confidence": confidence,
@@ -279,30 +344,49 @@ def generate_answer(request: AskRequest):
     }
 
 
-def delete_question_by_id(question_id: str):
-    """刪除指定 ID 的問題"""
-    ensure_collection()
-    result = client.retrieve(collection_name=COLLECTION_NAME, ids=[question_id])
-    if not result:
-        return {"status": "error", "message": f"找不到 ID: {question_id}"}
+def search_knowledge(request: SearchRequest):
+    """只檢索、不生成：回傳指定 Space 內的命中結果與相似度分數"""
+    if not ensure_collection(EMBEDDING_DIMENSION):
+        return {"hits": []}
+
+    extra = []
+    if request.type:
+        extra.append(models.FieldCondition(key="type", match=models.MatchValue(value=request.type)))
+
+    results = client.search(
+        collection_name=COLLECTION_NAME,
+        query_vector=embed_text(request.query),
+        limit=request.limit,
+        with_payload=True,
+        query_filter=space_filter(request.space_id, *extra)
+    )
+
+    return {
+        "hits": [
+            {
+                "id": str(r.id),
+                "reference_id": (r.payload or {}).get("referenId"),
+                "type": (r.payload or {}).get("type"),
+                "question": (r.payload or {}).get("question", ""),
+                "answer": (r.payload or {}).get("answer", ""),
+                "score": r.score,
+            }
+            for r in results
+        ]
+    }
+
+
+def delete_question_by_id(question_id: str, space_id: int):
+    """刪除指定 Space 內的問題向量；其他 Space 的同 ID point 不受影響"""
+    if not ensure_collection() or not find_points_in_space(space_id, [question_id]):
+        raise HTTPException(status_code=404, detail=f"找不到 ID: {question_id}")
     client.delete(
         collection_name=COLLECTION_NAME,
-        points_selector=models.PointIdsList(points=[question_id])
-    )
-    return {"status": "success", "message": f"已刪除問題 ID: {question_id}"}
-
-
-def delete_type_collection(collection_name: str, type_value: str):
-    """刪除指定 type 向量"""
-    client.delete(
-        collection_name=collection_name,
         points_selector=models.FilterSelector(
-            filter=models.Filter(
-                must=[models.FieldCondition(key="type", match=models.MatchValue(value=type_value))]
-            )
+            filter=space_filter(space_id, models.HasIdCondition(has_id=[question_id]))
         )
     )
-    return {"status": f"已刪除 type={type_value} 的所有向量"}
+    return {"status": "success", "message": f"已刪除問題 ID: {question_id}"}
 
 
 def get_collections():
@@ -318,50 +402,48 @@ def get_collections():
 def read_root():
     return {
         "message": "RAG API is running",
-        "sentence_model_status": "loaded" if _model else "loading" if _model_loading else "not_loaded",
-        "qa_model_status": "loaded" if _qa_model else "loading" if _qa_model_loading else "not_loaded"
+        "embedding": ollama_health()
     }
 
 
-@app.post("/questionsToVector")
+@app.post("/questionsToVector", dependencies=[Depends(require_internal_key)])
 def api_questions_to_vector(request: QuestionListRequest):
     return process_questions_to_vector(request)
 
 
-@app.post("/ask")
+@app.post("/ask", dependencies=[Depends(require_internal_key)])
 def api_ask(request: AskRequest):
     return generate_answer(request)
 
 
-@app.delete("/questions/{question_id}")
-def api_delete_question(question_id: str):
-    return delete_question_by_id(question_id)
+@app.post("/search", dependencies=[Depends(require_internal_key)])
+def api_search(request: SearchRequest):
+    return search_knowledge(request)
 
 
-@app.delete("/delete_type/{type_value}")
-def api_delete_type(type_value: str):
-    return delete_type_collection(COLLECTION_NAME, type_value)
+@app.delete("/questions/{question_id}", dependencies=[Depends(require_internal_key)])
+def api_delete_question(question_id: str, space_id: int = Query(gt=0)):
+    return delete_question_by_id(question_id, space_id)
 
 
-@app.get("/collections")
+@app.get("/collections", dependencies=[Depends(require_internal_key)])
 def api_get_collections():
     return get_collections()
 
 
-@app.get("/model_status")
+@app.get("/model_status", dependencies=[Depends(require_internal_key)])
 def get_model_status():
-    return {
-        "sentence_model": "loaded" if _model else "loading" if _model_loading else "not_loaded",
-        "qa_model": "loaded" if _qa_model else "loading" if _qa_model_loading else "not_loaded"
-    }
+    return {"embedding": {"provider": "ollama", **ollama_health()}}
 
 
-@app.get("/questions")
-def list_all_questions(limit: int = 100):
-    """列出所有問題"""
-    ensure_collection()
+@app.get("/questions", dependencies=[Depends(require_internal_key)])
+def list_questions(space_id: int = Query(gt=0), limit: int = Query(default=100, gt=0, le=1000)):
+    """列出指定 Space 的問題"""
+    if not ensure_collection():
+        return {"status": "success", "count": 0, "questions": []}
     result = client.scroll(
         collection_name=COLLECTION_NAME,
+        scroll_filter=space_filter(space_id),
         limit=limit,
         with_payload=True,
         with_vectors=False
@@ -378,15 +460,3 @@ def list_all_questions(limit: int = 100):
             })
     return {"status": "success", "count": len(questions), "questions": questions}
 
-
-# ==============================
-# 啟動事件：背景載入模型
-# ==============================
-@app.on_event("startup")
-async def startup_event():
-    def delayed_load():
-        time.sleep(2)
-        load_models_background()
-    thread = threading.Thread(target=delayed_load)
-    thread.daemon = True
-    thread.start()

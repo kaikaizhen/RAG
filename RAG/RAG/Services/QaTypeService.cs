@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using Library.Http;
-using RAG.Commons.Options;
 using RAG.Models.Dtos.QaType;
 using RAG.Models.Entities;
 using RAG.Repositories.Interfaces;
@@ -12,7 +11,6 @@ namespace RAG.Services
     public class QaTypeService:IQaTypeService
     {
         private readonly IMapper _mapper;
-        private readonly RagOption _ragOption;
 
         private readonly IQaTypeRepo _qaTypeRepo;
         private readonly IQaTypeItemRepo _qaTypeItemRepo;
@@ -21,14 +19,12 @@ namespace RAG.Services
 
         public QaTypeService(
             IMapper mapper, 
-            RagOption ragOption,
             IQaTypeRepo qaTypeRepo,
             IQaTypeItemRepo qaTypeItemRepo,
             IQuestionsRepo questionsRepo
         )
         {
             _mapper = mapper;
-            _ragOption = ragOption;
             _qaTypeRepo = qaTypeRepo;
             _qaTypeItemRepo= qaTypeItemRepo;
             _questionsRepo = questionsRepo;
@@ -60,27 +56,18 @@ namespace RAG.Services
         {
             var qa = await _qaTypeRepo.GetByIdAsync(Id) ?? throw new HttpException((HttpStatusCode)400, "查無問題種類");
 
+            // 全域共用字典：仍有任何 Space 的問題使用時拒絕刪除，不跨 Space 連帶刪除問題與向量
+            if (await _questionsRepo.AnyByQaItemTypeIdsAsync(qa.QaItemType.Select(i => i.ID)))
+            {
+                throw new HttpException(HttpStatusCode.Conflict, "仍有問題使用此問題種類，無法刪除");
+            }
+
             await _qaTypeRepo.TransactionAsync();
-            try
-            {
-                await _questionsRepo.DeleteRangeAsync(qa.QaItemType.SelectMany(q => q.Questions));
-                await _qaTypeItemRepo.DeleteRangeAsync(qa.QaItemType);
-                await _qaTypeRepo.DeleteAsync(qa);
 
-                var url = $"{_ragOption.BaseUrl}{_ragOption.DeleteTypeUrl}{Id}";
-                HttpClient client = new HttpClient();
-                var response = await client.DeleteAsync(url);
-                if (!response.IsSuccessStatusCode)
-                {
-                    throw new HttpException((HttpStatusCode)500, "RAG Delete API Error");
-                }
+            await _qaTypeItemRepo.DeleteRangeAsync(qa.QaItemType.ToList());
+            await _qaTypeRepo.DeleteAsync(qa);
 
-                await _qaTypeRepo.CommitAsync();
-            }
-            catch
-            {
-                throw;
-            }
+            await _qaTypeRepo.CommitAsync();
         }
     }
 }

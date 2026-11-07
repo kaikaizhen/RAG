@@ -7,6 +7,9 @@ namespace RAG.Models.Dtos.RagServer
         /// <summary>
         /// 問題列表（對應 Python 的 "questions" 屬性）
         /// </summary>
+        [JsonProperty("space_id")]
+        public int SpaceId { get; set; }
+
         [JsonProperty("questions")]
         public List<QuestionRequest> Questions { get; set; } = new List<QuestionRequest>();
 

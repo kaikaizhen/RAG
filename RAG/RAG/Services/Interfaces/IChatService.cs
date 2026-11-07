@@ -13,11 +13,10 @@ namespace RAG.Services.Interfaces
         Task<ChatReponseDto> SendChatAsync(ChatDto dto);
 
         /// <summary>
-        /// 查詢聊天室清單
+        /// 查詢目前使用者的聊天室清單
         /// </summary>
-        /// <param name="dto"></param>
         /// <returns></returns>
-        Task<List<GetChatHistoryDto>> GetChatHistoryAsync(GetChatDto dto);
+        Task<List<GetChatHistoryDto>> GetChatHistoryAsync();
 
         /// <summary>
         /// 查詢聊天室記錄清單

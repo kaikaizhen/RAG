@@ -1,11 +1,10 @@
 ﻿using AutoMapper;
 using Library.Http;
+using RAG.Authentication;
 using RAG.Models.Dtos.Auth;
 using RAG.Repositories.Interfaces;
 using RAG.Services.Interfaces;
 using System.Net;
-using TD_WebApiHelper.Core.Helpers;
-using TD_WebApiHelper.Models.JwtToken;
 
 namespace RAG.Services
 {
@@ -13,40 +12,66 @@ namespace RAG.Services
     {
         private readonly IMapper _mapper;
 
-        private readonly IJwtTokenHelper _jwtTokenHelper;
+        private readonly IJwtTokenIssuer _jwtTokenIssuer;
 
         private readonly IUserCacheRepo _userCacheRepo;
 
+        private readonly IRefreshTokenValidator _refreshTokenValidator;
+
+        private readonly IPasswordHasher _passwordHasher;
+
         public AuthService(
             IMapper mapper,
-            IJwtTokenHelper jwtTokenHelper,
-            IUserCacheRepo userCacheRepo
+            IJwtTokenIssuer jwtTokenIssuer,
+            IUserCacheRepo userCacheRepo,
+            IRefreshTokenValidator refreshTokenValidator,
+            IPasswordHasher passwordHasher
         )
         {
             _mapper = mapper;
-            _jwtTokenHelper = jwtTokenHelper;
+            _jwtTokenIssuer = jwtTokenIssuer;
             _userCacheRepo = userCacheRepo;
+            _refreshTokenValidator = refreshTokenValidator;
+            _passwordHasher = passwordHasher;
         }
 
         public async Task<LoginInfoDto> LoginAsync(LoginDto dto)
         {
-            var userInfo = await _userCacheRepo.GetUserByAccountAndPasswordAsync(dto.Account, dto.Password) ?? throw new HttpException((HttpStatusCode)401,"登入失敗");
+            var userInfo = await _userCacheRepo.GetByAccountAsync(dto.Account);
 
-            var tokenInfo = new GeneratedJwtTokens<Dictionary<string, string>>()
+            if (userInfo is null)
             {
-                AccessToken = new JwtTokenMetaData<Dictionary<string, string>>()
-                {
-                    Username = userInfo.ID.ToString(),
-                    Expiration = TimeSpan.FromHours(3)
-                },
-                RefreshToken = new JwtTokenMetaData<Dictionary<string, string>>()
-                {
-                    Username = userInfo.ID.ToString(),
-                    Expiration = TimeSpan.FromHours(8)
-                }
-            };
+                // 帳號不存在也做等量運算，避免以回應時間探測帳號
+                _passwordHasher.BurnVerification(dto.Password);
+                throw new HttpException((HttpStatusCode)401, "登入失敗");
+            }
 
-            var (accessToken, refreshToken) = _jwtTokenHelper.GenerateTokens(tokenInfo);
+            if (!_passwordHasher.Verify(dto.Password, userInfo.Password, out var needsUpgrade))
+            {
+                throw new HttpException((HttpStatusCode)401, "登入失敗");
+            }
+
+            if (needsUpgrade)
+            {
+                // 舊版明文密碼（或過時的雜湊參數）在登入成功時升級為目前的雜湊
+                userInfo.Password = _passwordHasher.Hash(dto.Password);
+                await _userCacheRepo.UpdateAsync(userInfo);
+            }
+
+            return IssueSession(userInfo);
+        }
+
+        public async Task<LoginInfoDto> RefreshAsync(string refreshToken)
+        {
+            var userId = await _refreshTokenValidator.ValidateAsync(refreshToken) ?? throw new HttpException(HttpStatusCode.Unauthorized, "Unauthorized");
+            var userInfo = await _userCacheRepo.GetByIdAsync(userId) ?? throw new HttpException(HttpStatusCode.Unauthorized, "Unauthorized");
+
+            return IssueSession(userInfo);
+        }
+
+        private LoginInfoDto IssueSession(Models.Entities.UserCache userInfo)
+        {
+            var (accessToken, refreshToken) = _jwtTokenIssuer.IssueTokens(userInfo.ID);
 
             var loginInfo = _mapper.Map<LoginInfoDto>(userInfo, opt => { opt.Items["Language"] = "ZhTw"; });
             loginInfo.AccessToken = accessToken;

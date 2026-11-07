@@ -1,11 +1,17 @@
-﻿using Library.Extensions;
+using Library.Extensions;
 using Microsoft.EntityFrameworkCore;
+using RAG.Authentication;
 using RAG.Commons.Options;
+using RAG.Context;
 using RAG.Models.Entities;
 using RAG.Repositories;
 using RAG.Repositories.Interfaces;
 using RAG.Services;
 using RAG.Services.Interfaces;
+using RAG.Registration;
+using RAG.Skills;
+using RAG.Tools;
+using RAG.Spaces;
 
 
 namespace RAG.Extensions
@@ -16,16 +22,22 @@ namespace RAG.Extensions
         {
             services.AddOption(configuration)
                     .AddDb(configuration)
-                    .AddLibrary(
-                        "Kaikai", "Audience",
-                        env,
-                        swaggerOptions: s =>
-                        {
-                            s.Title = "RAG 應用平台";
-                            s.Version = "v1";
-                            s.Description = "這是一個RAG 應用平台API說明檔案";
-                        }
-                    )
+                    .AddLibraryExceptionHandling(configuration)
+                    .AddLibraryCors(configuration)
+                    .AddLibraryApiVersioning(configuration)
+                    .AddLibraryOpenApi(o =>
+                    {
+                        o.Title = "RAG 應用平台";
+                        o.Description = "這是一個RAG 應用平台API說明檔案";
+                    })
+                    .AddLibraryRepositories()
+                    .AddNumericSchemaNormalization()
+                    .AddNativeJwtAuthentication(configuration)
+                    .AddRegistration(configuration)
+                    .AddSpaceRuntime()
+                    .AddSkillRuntime(configuration, env)
+                    .AddContextRuntime(configuration)
+                    .AddToolRuntime(configuration, env)
                     .AddMapping()
                     .AddService()
                     .AddRepo();
@@ -37,6 +49,12 @@ namespace RAG.Extensions
         {
             var ragOption = configuration.GetSection(RagOption.SectionName).Get<RagOption>() ?? new RagOption();
 
+            // RAG Server 內部金鑰缺少即 fail-fast；不可在 request 過程才發現或以空金鑰呼叫
+            if (string.IsNullOrWhiteSpace(ragOption.InternalApiKey) || ragOption.InternalApiKey.StartsWith('<'))
+            {
+                throw new InvalidOperationException("RagOption:InternalApiKey is missing; set RagOption__InternalApiKey.");
+            }
+
             services.AddSingleton(ragOption);
 
             return services;
@@ -46,10 +64,7 @@ namespace RAG.Extensions
         {
             services.AddDbContext<WenDaHubContext>(options =>
             {
-                options.UseMySql(
-                        configuration.GetConnectionString("DefaultConnection"),
-                       ServerVersion.AutoDetect(configuration.GetConnectionString("DefaultConnection"))
-                    );
+                options.UseMySQL(configuration.GetConnectionString("DefaultConnection")!);
             });
 
             return services;

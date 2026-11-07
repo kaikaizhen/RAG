@@ -1,0 +1,13 @@
+# build context 是 repo 根目錄；只留前端與 SDK
+.git
+RAG
+RAG_Server
+**/node_modules
+**/.next
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+apps/web/scripts
+apps/web/public/screenshots/.DS_Store
+**/.DS_Store

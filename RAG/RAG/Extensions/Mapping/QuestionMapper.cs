@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using Microsoft.Identity.Client;
+using AutoMapper;
 using RAG.Models.Dtos.Question;
 using RAG.Models.Entities;
 using RAG.Models.Params.Question;
