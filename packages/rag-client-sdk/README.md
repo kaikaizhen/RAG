@@ -1,6 +1,6 @@
 # @rag/client-sdk
 
-RAG API 的共用 TypeScript client，供 CLI、VS Code Extension、Web 共用。只呼叫 .NET API 的 `/api/v1/*`；
+RAG API 的共用 TypeScript client，供 CLI、VS Code Extension、Web（`apps/web`）共用。只呼叫 .NET API 的 `/api/v1/*`；
 所有授權（登入、Space membership、資料範圍）一律由伺服器決定。
 
 ## 使用
@@ -24,6 +24,9 @@ client.on('space-changed', () => { /* 清除畫面上與 Space 相關的狀態 *
 - **401**：自動以 refresh token 換發一次（同時多個請求只會 refresh 一次）；失敗即清除本機 session 並發出 `session-expired`。
 - **錯誤類別**：`RagValidationError`(400)、`RagUnauthorizedError`(401)、`RagForbiddenError`(403)、`RagNotFoundError`(404)、`RagConflictError`(409)、`RagServiceUnavailableError`(503)、其他為 `RagApiError`。
 - **快取**：Space 清單、目前 Space、有效 Skill 只快取在記憶體，切換 Space、登出、session 過期時全部清除。
+- **註冊**：`client.auth.register({ account: 信箱, password, nameZh })` 寄出驗證信（不論信箱是否已註冊回應都相同）；使用者點信中連結後以 `client.auth.verifyEmail(token)` 建立帳號。兩者都不需登入；伺服器未開放註冊時為 `RagServiceUnavailableError`。
+- **串流**：`for await (const e of client.chat.stream(question, { chatId, type, signal }))`；先收到 `{type:'chat', chatId}`（新對話即剛建立的編號），之後是 `{type:'text', text}`。
+- **CRUD**：`qaTypes`、`qaTypeItems`、`questions`（範圍由伺服器依 Space 決定，不帶 UserID）、`users`（僅本人）。這些端點的回應型別目前手寫於 `src/models.ts`（Controller 尚未宣告 `ProducesResponseType`）。
 - **不提供**：Agent 執行、capability / tool 呼叫、RAG Server 或 Qdrant 直接存取。
 
 ## API contract

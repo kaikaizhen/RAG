@@ -1,6 +1,7 @@
 import type { components } from './generated/schema.js';
 import { RagApiError, RagUnauthorizedError, RagValidationError, toRagError } from './errors.js';
 import { MemoryTokenStore, type StoredSession, type TokenStore } from './tokenStore.js';
+import { QuestionQueryType, type MutationResult, type QaType, type QaTypeItem, type Question, type User } from './models.js';
 
 type Schemas = components['schemas'];
 
@@ -14,6 +15,20 @@ export type ChatLogEntry = Schemas['GetChatLogHistoryVM'];
 export type SkillBundle = Schemas['SkillBundleVM'];
 export type KnowledgeSearchResult = Schemas['KnowledgeSearchVM'];
 export type KnowledgeItem = Schemas['KnowledgeItemVM'];
+
+export type RegisterInput = Schemas['RegisterParam'];
+export type RegistrationResult = Schemas['RegistrationResultVM'];
+export type CreateUserInput = Schemas['CreateUserParam'];
+export type UpdateUserInput = Schemas['UpdateUserParam'];
+export type CreateQaTypeInput = Schemas['CreateQaTypeParam'];
+export type UpdateQaTypeInput = Schemas['UpdateQaTypeParam'];
+export type CreateQaTypeItemInput = Schemas['CreateQaTypeItemParam'];
+export type UpdateQaTypeItemInput = Schemas['UpdateQaTypeItemParam'];
+export type CreateQuestionInput = Schemas['CreateQuestionParam'];
+export type UpdateQuestionInput = Schemas['UpdateQuestionParam'];
+
+/** ChatStream 事件：chat = 這次問答所屬的聊天室編號（先於文字送出）；text = 一段回答文字 */
+export type ChatStreamEvent = { type: 'chat'; chatId: string } | { type: 'text'; text: string };
 
 export const API_VERSION = 'v1';
 export const SPACE_HINT_HEADER = 'X-Space-Id';
@@ -38,6 +53,8 @@ type Listener<T> = (payload: T) => void;
 
 interface RequestOptions {
   body?: unknown;
+  accept?: string;
+  signal?: AbortSignal;
   /** 是否附加 Authorization / Space hint 並在 401 時嘗試 refresh */
   authenticated?: boolean;
 }
@@ -57,6 +74,15 @@ export class RagClient {
 
   readonly auth = {
     login: (account: string, password: string) => this.login(account, password),
+    /**
+     * 自行註冊（不需登入）：帳號為信箱，伺服器寄出驗證信。不論信箱是否已註冊回應都相同；
+     * 帳號在使用者點擊信中連結後才建立，並取得自己的個人 Space。伺服器未開放註冊時為 503。
+     */
+    register: (input: RegisterInput) =>
+      this.request<RegistrationResult>('POST', '/Auth/Register', { body: input, authenticated: false }),
+    /** 驗證信中連結附帶的 token；重複驗證同一個連結視為成功 */
+    verifyEmail: (token: string) =>
+      this.request<RegistrationResult>('POST', '/Auth/VerifyEmail', { body: { token }, authenticated: false }),
     refresh: () => this.refreshSession(),
     logout: () => this.logout(),
     session: () => this.tokenStore.get(),
@@ -100,6 +126,47 @@ export class RagClient {
     history: () => this.request<ChatSummary[]>('GET', '/Chat'),
     logs: (chatId: string) => this.request<ChatLogEntry[]>('GET', `/Chat/${encodeURIComponent(chatId)}`),
     delete: (chatId: string) => this.request<string>('DELETE', `/Chat/${encodeURIComponent(chatId)}`),
+    /**
+     * 串流取得回答（POST /Chat/ChatStream，SSE）。先 yield 一次 `chat` 事件（聊天室編號，新對話時即剛建立的編號），
+     * 之後 yield `text` 事件，串接即為完整答案。伺服器逐字送出 `data: <字元>`；空的 data 行代表換行字元。
+     * 傳入 signal 可中止。
+     */
+    stream: (question: string, options: { chatId?: string; type?: string; signal?: AbortSignal } = {}) =>
+      this.streamChat(question, options),
+  };
+
+  readonly qaTypes = {
+    list: () => this.request<QaType[]>('GET', '/QaType'),
+    create: (input: CreateQaTypeInput) => this.request<MutationResult>('POST', '/QaType', { body: input }),
+    update: (input: UpdateQaTypeInput) => this.request<MutationResult>('PUT', '/QaType', { body: input }),
+    delete: (id: number) => this.request<MutationResult>('DELETE', `/QaType/${pathId(id)}`),
+  };
+
+  readonly qaTypeItems = {
+    list: () => this.request<QaTypeItem[]>('GET', '/QaTypeItem'),
+    create: (input: CreateQaTypeItemInput) => this.request<MutationResult>('POST', '/QaTypeItem', { body: input }),
+    update: (input: UpdateQaTypeItemInput) => this.request<MutationResult>('PUT', '/QaTypeItem', { body: input }),
+    delete: (id: number) => this.request<MutationResult>('DELETE', `/QaTypeItem/${pathId(id)}`),
+  };
+
+  /** 目前 Space 的問答知識庫；範圍由伺服器依 Space 決定，不需（也不能）帶 UserID */
+  readonly questions = {
+    /** 不帶參數 = 全部；帶 qaTypeId = 依種類查詢 */
+    list: (options: { qaTypeId?: number } = {}) => {
+      const query = options.qaTypeId === undefined ? `?Type=${QuestionQueryType.All}` : `?Type=${QuestionQueryType.Type}&Id=${pathId(options.qaTypeId)}`;
+      return this.request<Question[]>('GET', `/Question${query}`);
+    },
+    create: (input: CreateQuestionInput) => this.request<MutationResult>('POST', '/Question', { body: input }),
+    update: (input: UpdateQuestionInput) => this.request<MutationResult>('PUT', '/Question', { body: input }),
+    delete: (id: number) => this.request<MutationResult>('DELETE', `/Question/${pathId(id)}`),
+  };
+
+  readonly users = {
+    get: (id: number) => this.request<User>('GET', `/User/${pathId(id)}`),
+    /** 建立帳號；後端要求已登入（不開放匿名自行註冊），新帳號的 manage 一律為 free */
+    create: (input: CreateUserInput) => this.request<MutationResult>('POST', '/User', { body: input }),
+    update: (input: UpdateUserInput) => this.request<MutationResult>('PUT', '/User', { body: input }),
+    delete: (id: number) => this.request<MutationResult>('DELETE', `/User/${pathId(id)}`),
   };
 
   constructor(options: RagClientOptions) {
@@ -207,9 +274,17 @@ export class RagClient {
 
   // ---------- transport ----------
 
-  private async request<T>(method: string, path: string, options: RequestOptions = {}, isRetry = false): Promise<T> {
+  private async request<T>(method: string, path: string, options: RequestOptions = {}): Promise<T> {
+    const response = await this.send(method, path, options);
+    const body = await readBody(response);
+    if (!response.ok) throw toRagError(response.status, body, response.statusText || `HTTP ${response.status}`);
+    return body as T;
+  }
+
+  /** 送出請求並處理 401 refresh；回傳尚未讀取 body 的 Response（非 401 的錯誤狀態由呼叫端處理） */
+  private async send(method: string, path: string, options: RequestOptions = {}, isRetry = false): Promise<Response> {
     const authenticated = options.authenticated ?? true;
-    const headers: Record<string, string> = { Accept: 'application/json' };
+    const headers: Record<string, string> = { Accept: options.accept ?? 'application/json' };
     if (options.body !== undefined) headers['Content-Type'] = 'application/json';
 
     if (authenticated) {
@@ -223,18 +298,72 @@ export class RagClient {
       method,
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: options.signal,
     });
 
     if (response.status === 401 && authenticated) {
-      if (!isRetry && (await this.refreshSession())) return this.request<T>(method, path, options, true);
+      if (!isRetry && (await this.refreshSession())) return this.send(method, path, options, true);
       await this.expireSession();
       throw toRagError(401, await readBody(response), 'Unauthorized');
     }
-
-    const body = await readBody(response);
-    if (!response.ok) throw toRagError(response.status, body, response.statusText || `HTTP ${response.status}`);
-    return body as T;
+    return response;
   }
+
+  private async *streamChat(question: string, options: { chatId?: string; type?: string; signal?: AbortSignal }): AsyncGenerator<ChatStreamEvent, void, void> {
+    const response = await this.send('POST', '/Chat/ChatStream', {
+      body: { question, chatID: options.chatId ?? null, type: options.type ?? null },
+      accept: 'text/event-stream',
+      signal: options.signal,
+    });
+    if (!response.ok) {
+      const body = await readBody(response);
+      throw toRagError(response.status, body, response.statusText || `HTTP ${response.status}`);
+    }
+    if (!response.body) return;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let boundary: number;
+        // 事件以空行分隔；空 data 事件的前後會多出 \n，統一在事件之間略過
+        while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+          const block = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+          const event = parseSseEvent(block);
+          if (event) yield event;
+        }
+        buffer = buffer.replace(/^\n+/, '');
+      }
+      const tail = parseSseEvent(buffer);
+      if (tail) yield tail;
+    } finally {
+      reader.releaseLock();
+    }
+  }
+}
+
+function pathId(id: number): number {
+  if (!Number.isInteger(id) || id <= 0) throw new RagValidationError('id must be a positive integer');
+  return id;
+}
+
+/** 解析一個 SSE 區塊；空 data = 換行字元；沒有 data 欄位回傳 null */
+function parseSseEvent(block: string): ChatStreamEvent | null {
+  const lines = block.replace(/^\n+/, '').split('\n');
+  let name = 'message';
+  let data: string | null = null;
+  for (const line of lines) {
+    if (line.startsWith('event:')) name = line.slice('event:'.length).trim();
+    else if (line.startsWith('data:')) data = line.slice('data:'.length).replace(/^ /, '');
+  }
+  if (data === null) return null;
+  if (name === 'chat') return { type: 'chat', chatId: data.trim() };
+  return { type: 'text', text: data === '' ? '\n' : data };
 }
 
 async function readBody(response: Response): Promise<unknown> {

@@ -112,6 +112,136 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/Auth/Register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RegisterParam"];
+                    "text/json": components["schemas"]["RegisterParam"];
+                    "application/*+json": components["schemas"]["RegisterParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RegistrationResultVM"];
+                        "application/json": components["schemas"]["RegistrationResultVM"];
+                        "text/json": components["schemas"]["RegistrationResultVM"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Auth/VerifyEmail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerifyEmailParam"];
+                    "text/json": components["schemas"]["VerifyEmailParam"];
+                    "application/*+json": components["schemas"]["VerifyEmailParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RegistrationResultVM"];
+                        "application/json": components["schemas"]["RegistrationResultVM"];
+                        "text/json": components["schemas"]["RegistrationResultVM"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/Capability": {
         parameters: {
             query?: never;
@@ -1100,6 +1230,7 @@ export interface components {
         ChatVM: {
             answer?: string;
             related?: string[];
+            chatID?: string;
         };
         CreateQaTypeItemParam: {
             /** Format: int32 */
@@ -1203,6 +1334,17 @@ export interface components {
         RefreshParam: {
             refreshToken: string;
         };
+        RegisterParam: {
+            account: string;
+            password: string;
+            nameZh?: null | string;
+            nameEn?: null | string;
+            nameOther?: null | string;
+        };
+        RegistrationResultVM: {
+            status?: string;
+            message?: string;
+        };
         SendChatParam: {
             question: string;
             type?: null | string;
@@ -1263,6 +1405,9 @@ export interface components {
             nameOther?: null | string;
             manage: string;
             isActive?: boolean;
+        };
+        VerifyEmailParam: {
+            token: string;
         };
     };
     responses: never;

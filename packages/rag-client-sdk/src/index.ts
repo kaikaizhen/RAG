@@ -14,7 +14,28 @@ export {
   type SkillBundle,
   type KnowledgeSearchResult,
   type KnowledgeItem,
+  type ChatStreamEvent,
+  type RegisterInput,
+  type RegistrationResult,
+  type CreateUserInput,
+  type UpdateUserInput,
+  type CreateQaTypeInput,
+  type UpdateQaTypeInput,
+  type CreateQaTypeItemInput,
+  type UpdateQaTypeItemInput,
+  type CreateQuestionInput,
+  type UpdateQuestionInput,
 } from './client.js';
+export {
+  QuestionQueryType,
+  type KnowledgeStatus,
+  type ManageLevel,
+  type QaType,
+  type QaTypeItem,
+  type Question,
+  type User,
+  type MutationResult,
+} from './models.js';
 export {
   RagApiError,
   RagValidationError,
