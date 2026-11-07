@@ -213,7 +213,7 @@ export default function AdminSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <div className="flex items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin" />
           <span className="text-lg">載入中...</span>
@@ -227,10 +227,10 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-full flex-col">
       {message && (
         <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${
+          className={`fixed top-4 right-4 left-4 z-50 flex md:left-auto items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${
             message.type === "success"
               ? "bg-green-500 text-white"
               : "bg-red-500 text-white"
@@ -245,10 +245,10 @@ export default function AdminSettingsPage() {
         </div>
       )}
 
-      <div className="border-b bg-background px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">管理設定</h1>
+      <div className="border-b bg-background px-4 py-3 md:px-6 md:py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold md:text-2xl">管理設定</h1>
             <p className="text-sm text-muted-foreground mt-1">
               整理你的問答知識庫；新增與修改後立即生效
             </p>
@@ -267,13 +267,13 @@ export default function AdminSettingsPage() {
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            <span className="ml-2">重新載入</span>
+            <span className="ml-2 hidden sm:inline">重新載入</span>
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden p-6">
-        <div className="grid h-full gap-6 lg:grid-cols-2">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:overflow-hidden">
+        <div className="grid gap-6 lg:h-full lg:grid-cols-2">
           <AddQAForm
             currentQuestion={currentQuestion}
             setCurrentQuestion={setCurrentQuestion}

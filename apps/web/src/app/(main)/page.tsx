@@ -342,7 +342,7 @@ export default function MainPage() {
   ), [message, isStreaming, isMobile, handleSubmit, handleKeyDown, currentTypeId, currentTypeName, qaTypes])
 
   return (
-    <div className="flex h-screen w-full flex-col">
+    <div className="flex h-dvh w-full flex-col">
       {/* 手機版頂部導航列 */}
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
         <SidebarTrigger />

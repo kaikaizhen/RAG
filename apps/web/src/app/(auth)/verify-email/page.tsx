@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { CheckCircle2, Loader2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { describeError, getClient } from "@/lib/rag"
 import { Logo } from "@/components/logo"
 
@@ -27,8 +27,8 @@ function VerifyEmail() {
   }, [token])
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-dvh items-center justify-center p-4">
+      <div className="flex w-full max-w-md flex-col gap-6 py-6">
         <CardHeader>
           <div className="mb-2 flex justify-center">
             <Logo size={80} priority animated />
@@ -66,7 +66,7 @@ function VerifyEmail() {
             </>
           )}
         </CardContent>
-      </Card>
+      </div>
     </div>
   )
 }

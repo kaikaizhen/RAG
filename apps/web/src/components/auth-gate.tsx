@@ -8,7 +8,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const { profile, ready } = useProfile()
   if (!ready || !profile) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-dvh w-full items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )

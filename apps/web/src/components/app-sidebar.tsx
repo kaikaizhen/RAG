@@ -45,6 +45,17 @@ import { ThemeColorPicker } from "@/components/theme-color-picker"
 import { Separator } from "@/components/ui/separator"
 import { SpaceSwitcher } from "@/components/space-switcher"
 import { Logo } from "@/components/logo"
+import { useLongPress } from "@/hooks/use-long-press"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { canWriteKnowledge, getClient, getProfile, signOut } from "@/lib/rag"
 
 interface ChatHistory {
@@ -53,6 +64,56 @@ interface ChatHistory {
   createdAt?: string
   updateTime?: string
   createTime?: string
+}
+
+interface ChatRowProps {
+  chat: ChatHistory
+  expanded: boolean
+  timeText: string
+  onOpen: (chatId: string) => void
+  onDelete: (chat: ChatHistory) => void
+}
+
+/** 單筆對話：點一下開啟；觸控裝置長按刪除（沒有 hover），桌面滑過會出現垃圾桶 */
+function ChatRow({ chat, expanded, timeText, onOpen, onDelete }: ChatRowProps) {
+  const longPress = useLongPress(() => onDelete(chat))
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        {...longPress}
+        onClick={() => onOpen(chat.id)}
+        tooltip={chat.name}
+        className="group select-none [-webkit-touch-callout:none]"
+      >
+        <MessageSquare className="h-4 w-4 flex-shrink-0" />
+        <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+          <span className="truncate text-sm">{chat.name}</span>
+          {timeText && <span className="truncate text-xs text-muted-foreground">{timeText}</span>}
+        </div>
+        {expanded && (
+          <div
+            role="button"
+            tabIndex={0}
+            className="inline-flex items-center justify-center h-6 w-6 rounded-md opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity flex-shrink-0 hover:bg-accent hover:text-accent-foreground cursor-pointer [@media(hover:none)]:hidden"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(chat)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                e.stopPropagation()
+                onDelete(chat)
+              }
+            }}
+            title="刪除對話"
+          >
+            <Trash2 className="h-3 w-3" />
+          </div>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
 }
 
 export function AppSidebar() {
@@ -64,6 +125,7 @@ export function AppSidebar() {
   const [recentChats, setRecentChats] = React.useState<ChatHistory[]>([])
   // 管理入口依目前 Space 的 knowledge.write 權限顯示（Space 切換後重新判斷）
   const [canAccessSettings, setCanAccessSettings] = React.useState(false)
+  const [pendingDelete, setPendingDelete] = React.useState<ChatHistory | null>(null)
   
   React.useEffect(() => {
     const profile = getProfile()
@@ -142,15 +204,14 @@ export function AppSidebar() {
     window.dispatchEvent(new CustomEvent('loadChat', { detail: { chatId } }))
   }
 
-  const handleDeleteChat = async (e: React.MouseEvent, chatId: string) => {
-    e.stopPropagation()
-    
-    if (!confirm('確定要刪除這個對話嗎？')) return
-    
+  const confirmDeleteChat = async () => {
+    const chat = pendingDelete
+    setPendingDelete(null)
+    if (!chat) return
     try {
-      await getClient().chat.delete(chatId)
-      setRecentChats(prev => prev.filter(chat => chat.id !== chatId))
-      window.dispatchEvent(new CustomEvent('chatDeleted', { detail: { chatId } }))
+      await getClient().chat.delete(chat.id)
+      setRecentChats(prev => prev.filter(c => c.id !== chat.id))
+      window.dispatchEvent(new CustomEvent('chatDeleted', { detail: { chatId: chat.id } }))
     } catch (error) {
       console.error("刪除聊天失敗:", error)
     }
@@ -232,7 +293,10 @@ export function AppSidebar() {
 
         {/* 最近的對話 */}
         <SidebarGroup>
-          <SidebarGroupLabel>最近的對話</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            最近的對話
+            <span className="ml-2 hidden text-xs font-normal text-muted-foreground [@media(hover:none)]:inline">長按可刪除</span>
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             {recentChats.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
@@ -241,40 +305,14 @@ export function AppSidebar() {
             ) : (
               <SidebarMenu>
                 {recentChats.map((chat) => (
-                  <SidebarMenuItem key={chat.id}>
-                    <SidebarMenuButton 
-                      onClick={() => handleChatClick(chat.id)}
-                      tooltip={chat.name}
-                      className="group"
-                    >
-                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                      <div className="flex flex-1 flex-col gap-0.5 min-w-0">
-                        <span className="truncate text-sm">{chat.name}</span>
-                        {chat.createdAt && (
-                          <span className="truncate text-xs text-muted-foreground">
-                            {formatTime(chat.createdAt)}
-                          </span>
-                        )}
-                      </div>
-                      {state === "expanded" && (
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          className="inline-flex items-center justify-center h-6 w-6 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                          onClick={(e) => handleDeleteChat(e, chat.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              handleDeleteChat(e as unknown as React.MouseEvent, chat.id)
-                            }
-                          }}
-                          title="刪除對話"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </div>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <ChatRow
+                    key={chat.id}
+                    chat={chat}
+                    expanded={state === "expanded"}
+                    timeText={formatTime(chat.createdAt)}
+                    onOpen={handleChatClick}
+                    onDelete={setPendingDelete}
+                  />
                 ))}
               </SidebarMenu>
             )}
@@ -354,6 +392,20 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>刪除這個對話？</AlertDialogTitle>
+            <AlertDialogDescription className="break-words">
+              「{pendingDelete?.name}」的所有訊息都會被刪除，無法復原。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteChat}>刪除</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
   )
 }

@@ -185,7 +185,7 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <div className="flex items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin" />
           <span className="text-lg">載入中...</span>
@@ -199,10 +199,10 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-full flex-col">
       {message && (
         <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${
+          className={`fixed top-4 right-4 left-4 z-50 flex md:left-auto items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${
             message.type === "success"
               ? "bg-green-500 text-white"
               : "bg-red-500 text-white"
@@ -217,7 +217,7 @@ export default function HistoryPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-hidden p-6">
+      <div className="flex-1 overflow-hidden p-4 md:p-6">
         <div className="h-full flex flex-col gap-4 max-w-5xl mx-auto">
           <HistorySearch 
             searchQuery={searchQuery}

@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button"
 import {
-  Card,
   CardContent,
   CardDescription,
   CardFooter,
@@ -123,8 +122,8 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-dvh items-center justify-center p-4">
+      <div className="flex w-full max-w-md flex-col gap-6 py-6">
         <CardHeader>
           <div className="mb-2 flex justify-center">
             <Logo size={80} priority animated />
@@ -233,7 +232,7 @@ export default function SignUpPage() {
             </CardFooter>
           </form>
         </CardContent>
-      </Card>
+      </div>
     </div>
   )
 }

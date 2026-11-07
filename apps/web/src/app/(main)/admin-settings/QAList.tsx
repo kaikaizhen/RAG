@@ -41,16 +41,16 @@ export function QAList({ qaPairs, loadingQAs, onDelete, onEdit, getTypeName }: Q
   const displayTypeName = getTypeName || defaultGetTypeName
 
   return (
-    <Card className="flex h-full flex-col max-h-[600px]">
+    <Card className="flex flex-col lg:h-full lg:max-h-[600px]">
       <CardHeader className="flex-shrink-0">
       <CardTitle>已儲存的 Q&A ({qaPairs.length})</CardTitle>
       <CardDescription>
         目前空間的所有問答
       </CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden p-0">
-      <ScrollArea className="h-full w-full max-h-[500px]">
-        <div className="px-6 pb-4">
+      <CardContent className="p-0 lg:flex-1 lg:overflow-hidden">
+      <ScrollArea className="w-full lg:h-full lg:max-h-[500px]">
+        <div className="px-4 pb-4 md:px-6">
         {loadingQAs ? (
           <div className="flex h-[200px] items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin" />
