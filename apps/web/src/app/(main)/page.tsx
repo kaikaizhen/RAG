@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
+import { AssistantMessage } from "@/components/assistant-message"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { SendHorizontal, SlidersHorizontal, Square } from "lucide-react"
+import { ArrowDown, SendHorizontal, SlidersHorizontal, Square } from "lucide-react"
 import { RagApiError, type QaType } from "@rag/client-sdk"
 import { describeError, getClient, getProfile } from "@/lib/rag"
 
@@ -39,7 +39,6 @@ export default function MainPage() {
   const [currentTypeId, setCurrentTypeId] = React.useState<string>(ALL_TYPES)
   const [qaTypes, setQaTypes] = React.useState<QaType[]>([])
   const [isMobile, setIsMobile] = React.useState<boolean>(false)
-  const messagesEndRef = React.useRef<HTMLDivElement>(null)
   const abortControllerRef = React.useRef<AbortController | null>(null)
   // handleSubmit 內需要最新的 chatId，但不希望每次變動都重建 listener
   const currentChatIdRef = React.useRef<string>("")
@@ -47,14 +46,35 @@ export default function MainPage() {
     currentChatIdRef.current = currentChatId
   }, [currentChatId])
 
-  // 滾動到底部
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  // 對話區捲動：只有「本來就在底部」時才跟隨新內容。使用者往上滑去看前面的內容時，
+  // 串流輸出不可以再把畫面拉回最底（否則會卡住、看不到上面）。
+  const scrollRef = React.useRef<HTMLDivElement>(null)
+  const stickToBottomRef = React.useRef(true)
+  const [showJumpToLatest, setShowJumpToLatest] = React.useState(false)
+
+  const scrollToBottom = React.useCallback((smooth = false) => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" })
+  }, [])
+
+  const handleScroll = React.useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    stickToBottomRef.current = atBottom
+    setShowJumpToLatest(!atBottom)
+  }, [])
+
+  const jumpToLatest = React.useCallback(() => {
+    stickToBottomRef.current = true
+    setShowJumpToLatest(false)
+    scrollToBottom(true)
+  }, [scrollToBottom])
 
   React.useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    if (stickToBottomRef.current) scrollToBottom()
+  }, [messages, scrollToBottom])
 
   React.useEffect(() => {
     // 檢測是否為手機版
@@ -81,6 +101,7 @@ export default function MainPage() {
     try {
       const logs = await getClient().chat.logs(chatId)
       setCurrentChatId(chatId)
+      stickToBottomRef.current = true
       setMessages(
         logs.flatMap((log): Message[] => [
           { role: "user", content: log.questions ?? "" },
@@ -179,6 +200,7 @@ export default function MainPage() {
 
     const userMessage = message.trim()
     setMessage("")
+    stickToBottomRef.current = true // 自己送出訊息時一定要看到最新內容
     setMessages(prev => [...prev, { role: "user", content: userMessage }, { role: "assistant", content: "" }])
 
     const controller = new AbortController()
@@ -217,6 +239,9 @@ export default function MainPage() {
   }, [message, isStreaming, currentTypeId])
 
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 輸入法（注音、拼音等）組字或選字時按 Enter 是「確認選字」，不是送出；
+    // Safari 在 compositionend 之後的那次 keydown 會回報 keyCode 229，所以兩個條件都要擋
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e as unknown as React.FormEvent)
@@ -357,9 +382,10 @@ export default function MainPage() {
         </div>
       ) : (
         /* 有對話 - 輸入框在底部 */
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* 對話區域 */}
-          <ScrollArea className="flex-1 p-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {/* 對話區域：原生捲動（min-h-0 讓 flex 子元素可以縮小，內容超出時才會出現捲軸） */}
+          <div className="relative min-h-0 flex-1">
+          <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto p-4">
             <div className="mx-auto max-w-3xl space-y-6 pb-4">
               {messages.map((msg, index) => (
                 <div
@@ -381,13 +407,30 @@ export default function MainPage() {
                           : "bg-muted"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap text-sm md:text-base">{msg.content}</p>
+                    {msg.role === "assistant" && !msg.error ? (
+                      <AssistantMessage content={msg.content} />
+                    ) : (
+                      <p className="whitespace-pre-wrap text-sm md:text-base">{msg.content}</p>
+                    )}
                   </div>
                 </div>
               ))}
-              <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
+          </div>
+          {showJumpToLatest && (
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              onClick={jumpToLatest}
+              className="absolute bottom-3 left-1/2 h-9 w-9 -translate-x-1/2 rounded-full border shadow-md"
+              aria-label="回到最新訊息"
+              title="回到最新訊息"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
+          )}
+          </div>
 
           {/* 輸入框固定在底部 */}
           <div className="border-t bg-background p-4">

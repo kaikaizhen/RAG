@@ -248,7 +248,7 @@ export function AddQAForm({
           <Label htmlFor="answer">答案 (A)</Label>
           <Textarea
             id="answer"
-            placeholder="輸入答案內容..."
+            placeholder="輸入答案內容...（支援 Markdown：標題、清單、表格、程式碼區塊）"
             value={currentAnswer}
             onChange={(e) => setCurrentAnswer(e.target.value)}
             rows={6}

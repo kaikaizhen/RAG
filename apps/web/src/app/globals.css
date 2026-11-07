@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -158,3 +159,22 @@
 @media (prefers-reduced-motion: no-preference) {
   .animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
 }
+
+/* Markdown 程式碼區塊的語法上色（rehype-highlight 產生 .hljs-* class）；深色模式用 .dark 覆蓋 */
+.hljs { color: inherit; background: transparent; }
+.hljs-comment, .hljs-quote { color: #6a737d; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag, .hljs-type, .hljs-name, .hljs-tag { color: #d73a49; }
+.hljs-string, .hljs-regexp, .hljs-addition, .hljs-attribute, .hljs-meta .hljs-string { color: #032f62; }
+.hljs-number, .hljs-symbol, .hljs-bullet, .hljs-link, .hljs-variable, .hljs-template-variable, .hljs-selector-id, .hljs-selector-class { color: #005cc5; }
+.hljs-title, .hljs-section, .hljs-function .hljs-title, .hljs-class .hljs-title { color: #6f42c1; }
+.hljs-built_in, .hljs-attr, .hljs-params, .hljs-meta { color: #e36209; }
+.hljs-deletion { color: #b31d28; background: #ffeef0; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
+.dark .hljs-comment, .dark .hljs-quote { color: #8b949e; }
+.dark .hljs-keyword, .dark .hljs-selector-tag, .dark .hljs-literal, .dark .hljs-doctag, .dark .hljs-type, .dark .hljs-name, .dark .hljs-tag { color: #ff7b72; }
+.dark .hljs-string, .dark .hljs-regexp, .dark .hljs-addition, .dark .hljs-attribute, .dark .hljs-meta .hljs-string { color: #a5d6ff; }
+.dark .hljs-number, .dark .hljs-symbol, .dark .hljs-bullet, .dark .hljs-link, .dark .hljs-variable, .dark .hljs-template-variable, .dark .hljs-selector-id, .dark .hljs-selector-class { color: #79c0ff; }
+.dark .hljs-title, .dark .hljs-section, .dark .hljs-function .hljs-title, .dark .hljs-class .hljs-title { color: #d2a8ff; }
+.dark .hljs-built_in, .dark .hljs-attr, .dark .hljs-params, .dark .hljs-meta { color: #ffa657; }
+.dark .hljs-deletion { color: #ffdcd7; background: #67060c; }
