@@ -20,6 +20,7 @@ app.UseLibraryExceptionHandling();
 app.UseLibraryCors();
 app.UseLibraryOpenApi();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseSpaceContext();

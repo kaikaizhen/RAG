@@ -6,12 +6,11 @@ namespace RAG.Repositories.Interfaces
     public interface IUserCacheRepo:IRagRepo<UserCache>
     {
         /// <summary>
-        /// 查詢使用者(根據帳號密碼)
+        /// 查詢使用者(根據帳號；密碼由呼叫端以 IPasswordHasher 驗證)
         /// </summary>
         /// <param name="account"></param>
-        /// <param name="password"></param>
         /// <returns></returns>
-        Task<UserCache?> GetUserByAccountAndPasswordAsync(string account, string password);
+        Task<UserCache?> GetByAccountAsync(string account);
 
         /// <summary>
         /// 查詢是否已經有該使用者帳號

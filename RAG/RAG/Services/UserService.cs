@@ -21,13 +21,16 @@ namespace RAG.Services
         private readonly IQuestionsRepo _questionsRepo;
         private readonly ICurrentUserAccessor _currentUser;
 
+        private readonly IPasswordHasher _passwordHasher;
+
         public UserService(
             IMapper mapper,
             IRagScopeFactory ragScopeFactory,
             IRagGateway ragGateway,
             IUserCacheRepo userCacheRepo,
             IQuestionsRepo questionsRepo,
-            ICurrentUserAccessor currentUser
+            ICurrentUserAccessor currentUser,
+            IPasswordHasher passwordHasher
         )
         {
             _mapper = mapper;
@@ -36,6 +39,7 @@ namespace RAG.Services
             _userCacheRepo = userCacheRepo;
             _questionsRepo = questionsRepo;
             _currentUser = currentUser;
+            _passwordHasher = passwordHasher;
         }
 
         public async Task<GetUserDto> GetAsyc(int Id)
@@ -51,6 +55,8 @@ namespace RAG.Services
 
             var entity = _mapper.Map<UserCache>(dto);
 
+            entity.Password = _passwordHasher.Hash(dto.Password);
+
             await _userCacheRepo.AddAsync(entity);
         }
 
@@ -63,6 +69,10 @@ namespace RAG.Services
             // 權限相關欄位由伺服器端保留，不接受使用者自行變更
             entity.Manage = user.Manage;
             entity.IsActive = user.IsActive;
+
+            // 帳號（自行註冊者即已驗證的信箱）不可經由更新變更
+            entity.Account = user.Account;
+            entity.Password = _passwordHasher.Hash(dto.Password);
 
             await _userCacheRepo.UpdateAsync(entity);
         }

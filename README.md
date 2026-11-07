@@ -70,6 +70,9 @@
 │   ├── Dockerfile
 │   └── docker-compose.yml
 │
+├── apps/web/                   # Next.js 前端（使用 packages/rag-client-sdk）
+├── packages/rag-client-sdk/    # 共用 TypeScript client SDK
+│
 └── RAG_Server/                 # Python FastAPI 向量服務
     ├── main.py
     ├── requirements.txt
@@ -155,6 +158,38 @@ dotnet run --project RAG/RAG.csproj
 ```
 
 預設位址：`http://localhost:5115`，Swagger 文件於 `http://localhost:5115/swagger`。
+
+---
+
+## 自行註冊與 Gmail 驗證信
+
+預設**關閉**。開啟後任何人都能以信箱註冊：
+
+1. `POST /api/v1/Auth/Register` 收到信箱與密碼 → 寄出驗證信（不論信箱是否已註冊，回應都相同，避免被用來探測帳號）。
+2. 使用者點信中連結 → 前端 `/verify-email?token=…` 呼叫 `POST /api/v1/Auth/VerifyEmail`。
+3. **此時才建立帳號**，並建立專屬的個人 Space（`u-<使用者編號>`，角色 owner、預設）。每個人的知識庫與對話都只存在自己的 Space，不會互相污染。
+
+設計重點：註冊資料（含密碼雜湊）以 AES-GCM 加密放在驗證連結內，連結 24 小時有效；在點擊之前資料庫裡不存在該帳號，
+所以不會有人搶先用別人的信箱註冊並佔住帳號。密碼一律以 PBKDF2-SHA512（210,000 次）儲存；既有的明文密碼在下次登入成功時自動升級。
+`POST /api/v1/User` 仍需登入，不是公開端點。
+
+**設定（環境變數，見 `RAG/.env.example`）**
+
+| 變數 | 說明 |
+| --- | --- |
+| `REGISTRATION_ENABLED` | `true` 才開放；預設 `false`。啟用時缺少下列任何設定，API 會直接啟動失敗 |
+| `REGISTRATION_VERIFY_URL_BASE` | 前端驗證頁的完整網址，例如 `https://<前端網域>/verify-email` |
+| `MAIL_HOST` / `MAIL_PORT` / `MAIL_USE_SSL` | Gmail：`smtp.gmail.com` / `587` / `true` |
+| `MAIL_ACCOUNT` / `MAIL_PASSWORD` | Gmail 帳號與**應用程式密碼** |
+
+Gmail 需先開啟兩步驟驗證，再到 Google 帳戶的「應用程式密碼」建立一組 16 碼密碼（不是登入密碼）。
+這組密碼只放在伺服器的 `.env` / 環境變數（`Library__Mail__Password`），**不要**寫進程式碼、設定檔範本或對話。
+
+**上線順序**：① 備份 `UserCache` 後執行 `RAG/RAG/Migrations/Scripts/20261107-email-registration-columns.sql`（放寬 `Account`、`Password` 長度）
+→ ② 部署新版 API → ③ 設定上述變數並把 `REGISTRATION_ENABLED` 設為 `true`。順序反了，新版寫入長值時舊欄位會被資料庫拒絕。
+
+**防濫用**：註冊端點全域每分鐘 30 次、驗證端點每個來源 IP 每分鐘 60 次、同一信箱 60 秒內只寄一次。
+尚未做：圖形驗證（例如 Cloudflare Turnstile）、每個使用者的知識庫 / 向量用量上限；開放給陌生人之前建議補上。
 
 ---
 

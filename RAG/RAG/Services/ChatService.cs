@@ -85,6 +85,7 @@ namespace RAG.Services
                 await _chatRepo.UpdateAsync(chatEntity);
             }
 
+            chat.ChatId = chatEntity.ID.ToString();
             return chat;
         }
 

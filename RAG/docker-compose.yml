@@ -20,4 +20,14 @@ services:
       # 與 RAG_Server 共用同一組校準值（同名 env 由 .env 同時注入兩個服務）
       ContextRuntime__EvidenceScoreThreshold: ${DIRECT_MATCH_THRESHOLD:-0.70}
       ContextRuntime__SimilarScoreThreshold: ${SIMILAR_SCORE_THRESHOLD:-0.50}
+      # 自行註冊 + Gmail 驗證信（預設關閉；啟用時必須同時設定寄信與連結網址，否則啟動失敗）
+      Registration__Enabled: ${REGISTRATION_ENABLED:-false}
+      Registration__VerifyUrlBase: ${REGISTRATION_VERIFY_URL_BASE:-}
+      Registration__ServiceName: ${REGISTRATION_SERVICE_NAME:-RAGence}
+      Library__Mail__Host: ${MAIL_HOST:-}
+      Library__Mail__Port: ${MAIL_PORT:-587}
+      Library__Mail__UseSsl: ${MAIL_USE_SSL:-true}
+      Library__Mail__Account: ${MAIL_ACCOUNT:-}
+      Library__Mail__Password: ${MAIL_PASSWORD:-}
+      Library__Mail__DefaultFromName: ${MAIL_FROM_NAME:-RAGence}
     restart: unless-stopped   # 自動重啟策略

@@ -67,6 +67,10 @@ namespace RAG.Controllers
                 return;
             }
 
+            // 先送出聊天室編號（命名事件），前端據此延續同一個對話
+            await Response.WriteAsync($"event: chat\ndata: {chat.ChatId}\n\n");
+            await Response.Body.FlushAsync();
+
             var answer = chat.Answer;
             var random = new Random();
 

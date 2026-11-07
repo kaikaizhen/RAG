@@ -9,10 +9,10 @@ namespace RAG.Repositories
     {
         public UserCacheRepo(WenDaHubContext context) : base(context) { }
 
-        public async Task<UserCache?> GetUserByAccountAndPasswordAsync(string account,string password)
+        public async Task<UserCache?> GetByAccountAsync(string account)
         {
             var query = Query(
-                filter: s => s.Account == account && s.Password == password,
+                filter: s => s.Account == account,
                 asNoTracking:false
                 );
 

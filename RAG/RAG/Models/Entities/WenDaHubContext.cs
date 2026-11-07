@@ -140,14 +140,16 @@ public partial class WenDaHubContext : DbContext
             entity.HasIndex(e => e.Account, "Account").IsUnique();
 
             entity.Property(e => e.ID).HasColumnType("int(11)");
-            entity.Property(e => e.Account).HasMaxLength(12);
+            // 自行註冊的帳號為 Email（RFC 上限 254）；舊帳號仍為短字串
+            entity.Property(e => e.Account).HasMaxLength(254);
             entity.Property(e => e.Manage).HasMaxLength(10);
             entity.Property(e => e.NameEn).HasMaxLength(50);
             entity.Property(e => e.NameOther).HasMaxLength(50);
             entity.Property(e => e.NameZh)
                 .HasMaxLength(50)
                 .UseCollation("utf8mb4_unicode_ci");
-            entity.Property(e => e.Password).HasMaxLength(12);
+            // 儲存 PBKDF2 雜湊（Pbkdf2PasswordHasher）；舊帳號的明文在下次登入成功時自動升級
+            entity.Property(e => e.Password).HasMaxLength(255);
         });
 
         OnModelCreatingPartial(modelBuilder);

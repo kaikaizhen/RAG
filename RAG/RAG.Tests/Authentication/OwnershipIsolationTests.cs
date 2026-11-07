@@ -65,7 +65,9 @@ namespace RAG.Tests.Authentication
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var userA = await SeedData.GetUserAsync(_factory, SeedData.UserA);
-            Assert.Equal("newpass", userA!.Password);
+            // 密碼以雜湊儲存（不可是明文），且能以新密碼驗證
+            Assert.NotEqual("newpass", userA!.Password);
+            Assert.True(new RAG.Authentication.Pbkdf2PasswordHasher().Verify("newpass", userA.Password, out _));
             Assert.Equal("free", userA.Manage);
             Assert.True(userA.IsActive);
         }

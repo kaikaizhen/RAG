@@ -24,5 +24,11 @@ namespace RAG.Models.Dtos.RagServer
         /// 使用的回覆方法（qa_model / direct_match / context_summary）
         /// </summary>
         public string Method { get; set; }=string.Empty;
+
+        /// <summary>
+        /// 這次問答所屬的聊天室編號（由 ChatService 寫入，不來自 RAG Server）
+        /// </summary>
+        [JsonIgnore]
+        public string ChatId { get; set; } = string.Empty;
     }
 }
