@@ -246,6 +246,7 @@ docker run -d -p 8007:8007 \
 | `OLLAMA_EMBED_MODEL` | `qwen3-embedding:0.6b` | Embedding 模型 |
 | `EMBEDDING_DIMENSION` | `1024` | 向量維度（與回傳維度不符時拒絕寫入 / 查詢） |
 | `DIRECT_MATCH_THRESHOLD` / `DIRECT_MATCH_MARGIN` / `SIMILAR_SCORE_THRESHOLD` | `0.70` / `0.05` / `0.50` | `/ask` 判斷門檻（依 qwen3 校準）；`DIRECT_MATCH_THRESHOLD`、`SIMILAR_SCORE_THRESHOLD` 與 .NET ContextRuntime 共用同一組值 |
+| `SUMMARY_MAX_CHARS` | `500` | 摘要模式回覆的最大字數（只在段落 / 程式碼區塊邊界截斷） |
 | `CORS_ORIGINS` | `*` | 允許來源，多筆以逗號分隔 |
 
 ---
