@@ -29,6 +29,8 @@ OLLAMA_HEALTH_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_HEALTH_TIMEOUT_SECONDS",
 DIRECT_MATCH_THRESHOLD = float(os.getenv("DIRECT_MATCH_THRESHOLD", "0.7"))
 DIRECT_MATCH_MARGIN = float(os.getenv("DIRECT_MATCH_MARGIN", "0.05"))
 SIMILAR_SCORE_THRESHOLD = float(os.getenv("SIMILAR_SCORE_THRESHOLD", "0.50"))
+# 摘要模式（context_summary）回覆的最大字數；只在區塊邊界截斷，所以實際可能略少
+SUMMARY_MAX_CHARS = int(os.getenv("SUMMARY_MAX_CHARS", "500"))
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 # .NET API 與本服務共用的內部金鑰；未設定時所有受保護端點一律拒絕（fail-closed）
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
@@ -166,16 +168,84 @@ class SearchRequest(CaseInsensitiveModel):
 # ==============================
 # 工具函式
 # ==============================
-def dedup_text(text: str) -> str:
-    """移除重複句子"""
-    sentences = [s.strip() for s in text.split("。") if s.strip()]
+# ==============================
+# 回答格式（答案是 Markdown，前端會渲染；這裡的處理不可以破壞換行、縮排與程式碼區塊）
+# ==============================
+FENCE_MARKERS = ("```", "~~~")
+
+
+def normalize_newlines(text: str) -> str:
+    return (text or "").replace("\r\n", "\n").replace("\r", "\n")
+
+
+def split_blocks(text: str) -> List[str]:
+    """
+    以空行把文字切成區塊；``` / ~~~ 圍起來的程式碼區塊視為一個整體（裡面的空行不切），
+    區塊內的換行與縮排一律保留。
+    """
+    blocks: List[str] = []
+    current: List[str] = []
+    fence: Optional[str] = None
+    for line in normalize_newlines(text).split("\n"):
+        stripped = line.strip()
+        marker = next((m for m in FENCE_MARKERS if stripped.startswith(m)), None)
+        if fence is None and marker:
+            fence = marker
+        elif fence is not None and stripped.startswith(fence):
+            fence = None
+        if fence is None and not stripped:
+            if current:
+                blocks.append("\n".join(current))
+                current = []
+            continue
+        current.append(line)
+    if current:
+        blocks.append("\n".join(current))
+    return blocks
+
+
+def dedup_blocks(text: str) -> str:
+    """去除完全相同的段落（以區塊為單位，不改動區塊內容）；區塊之間以一個空行分隔"""
     seen = set()
-    result = []
-    for s in sentences:
-        if s not in seen:
-            seen.add(s)
-            result.append(s)
-    return "。".join(result) + ("。" if result else "")
+    unique = []
+    for block in split_blocks(text):
+        key = block.strip()
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(block)
+    return "\n\n".join(unique)
+
+
+def truncate_markdown(text: str, limit: int) -> str:
+    """
+    把 Markdown 截短到約 limit 字：只在區塊（段落 / 完整的程式碼區塊）邊界截斷；
+    若連第一個區塊都超過 limit，就在行的邊界截斷，並補上結尾的程式碼圍欄，避免後面的內容全被當成程式碼。
+    被截短時結尾加上「…」。
+    """
+    text = normalize_newlines(text)
+    if len(text) <= limit:
+        return text
+    kept: List[str] = []
+    total = 0
+    for block in split_blocks(text):
+        extra = len(block) + (2 if kept else 0)
+        if total + extra > limit:
+            break
+        kept.append(block)
+        total += extra
+    if kept:
+        return "\n\n".join(kept) + "\n\n…"
+
+    # 第一個區塊就太長：在行的邊界截斷
+    lines: List[str] = []
+    used = 0
+    for line in split_blocks(text)[0].split("\n"):
+        if used + len(line) + 1 > limit and lines:
+            break
+        lines.append(line[:limit])
+        used += len(line) + 1
+    fence_open = sum(1 for line in lines if line.strip().startswith(FENCE_MARKERS)) % 2 == 1
+    return "\n".join(lines) + ("\n```" if fence_open else "") + "\n\n…"
 
 
 def space_filter(space_id: int, *conditions) -> models.Filter:
@@ -313,7 +383,8 @@ def generate_answer(request: AskRequest):
             seen_answers.add(ans)
             unique_answers.append(ans)
 
-    context = "\n".join(unique_answers)
+    # 摘要模式要用的內容：答案之間以空行分隔（Markdown 的段落 / 清單 / 程式碼區塊才不會黏在一起）
+    context = dedup_blocks("\n\n".join(unique_answers))
 
     # results 依分數由高到低；direct match 需同時超過門檻且與第二名拉開差距
     best_match = results[0]
@@ -325,15 +396,14 @@ def generate_answer(request: AskRequest):
 
     if confidence >= DIRECT_MATCH_THRESHOLD and margin >= DIRECT_MATCH_MARGIN:
         print("執行直接匹配")
-        answer = best_match.payload["answer"]
+        # 直接回覆儲存的答案，原樣不動（換行、縮排、程式碼區塊都要保留）
+        answer = normalize_newlines(best_match.payload["answer"])
         method = "direct_match"
     else:
         print("執行內容摘要")
-        answer = f"根據相關內容：{context[:500]}..." if len(context) > 500 else context
+        summary = truncate_markdown(context, SUMMARY_MAX_CHARS)
+        answer = f"根據相關內容：\n\n{summary}" if summary != context else context
         method = "context_summary"
-
-    # 去除句子重複
-    answer = dedup_text(answer)
 
     print(f"回答方式: {method}, 信心度: {confidence}, 與第二名差距: {margin}")
     return {
