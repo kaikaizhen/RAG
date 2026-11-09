@@ -30,6 +30,35 @@ export interface ThemeColor {
 // Arc 風格的主題顏色配置
 export const themeColors: ThemeColor[] = [
   {
+    // 和學習筆記網站同一組顏色，兩個網站看起來是同一個產品
+    name: "Ink",
+    value: "ink",
+    lightVars: {
+      background: "oklch(1 0 0)",
+      foreground: "oklch(0.24 0.006 270)",
+      primary: "oklch(0.47 0.13 260)",
+      primaryForeground: "oklch(0.99 0 0)",
+      accent: "oklch(0.96 0.015 260)",
+      accentForeground: "oklch(0.3 0.06 260)",
+      sidebar: "oklch(0.975 0.002 100)",
+      sidebarForeground: "oklch(0.24 0.006 270)",
+      sidebarAccent: "oklch(0.94 0.02 260)",
+      sidebarAccentForeground: "oklch(0.4 0.12 260)",
+    },
+    darkVars: {
+      background: "oklch(0.21 0.004 270)",
+      foreground: "oklch(0.92 0.003 270)",
+      primary: "oklch(0.76 0.1 262)",
+      primaryForeground: "oklch(0.18 0.01 260)",
+      accent: "oklch(0.29 0.03 260)",
+      accentForeground: "oklch(0.92 0.003 270)",
+      sidebar: "oklch(0.23 0.005 270)",
+      sidebarForeground: "oklch(0.92 0.003 270)",
+      sidebarAccent: "oklch(0.29 0.03 260)",
+      sidebarAccentForeground: "oklch(0.82 0.08 262)",
+    },
+  },
+  {
     name: "Gray",
     value: "gray",
     lightVars: {

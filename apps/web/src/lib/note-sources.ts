@@ -25,15 +25,28 @@ function hrefOf(kind: NoteSource["kind"], ref: string): string | undefined {
   return `${NOTES_URL}/${kind === "entry" ? "entries" : "concepts"}?id=${encodeURIComponent(ref)}`
 }
 
+/** RAG Server 在公開知識的回答最前面加的提示（見 RAG_Server/main.py） */
+const SHARED_NOTICE = "這段回答來自**公開知識**"
+
+/** 問答答不出來時，把問題帶到筆記網站，由使用者在那裡確認才會記下來 */
+export function gapHref(question: string): string | undefined {
+  if (!NOTES_URL) return undefined
+  return `${NOTES_URL}/gaps/new?${new URLSearchParams({ q: question.slice(0, 500) })}`
+}
+
+export const notesUrl = NOTES_URL
+
 export function extractNoteSources(content: string): { body: string; sources: NoteSource[] } {
   const sources: NoteSource[] = []
   const seen = new Set<string>()
+  // 公開知識是別人的筆記，單篇連結開不到，改連公開知識頁
+  const shared = content.includes(SHARED_NOTICE)
   const body = content
     .replace(SOURCE_LINE, (_line, kind: NoteSource["kind"], ref: string) => {
       const key = `${kind}#${ref}`
       if (!seen.has(key)) {
         seen.add(key)
-        sources.push({ kind, ref, label: labelOf(kind, ref), href: hrefOf(kind, ref) })
+        sources.push({ kind, ref, label: labelOf(kind, ref), href: shared && NOTES_URL ? `${NOTES_URL}/explore` : hrefOf(kind, ref) })
       }
       return ""
     })

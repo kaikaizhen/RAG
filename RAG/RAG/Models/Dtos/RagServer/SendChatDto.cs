@@ -11,6 +11,12 @@ namespace RAG.Models.Dtos.RagServer
         public int SpaceId { get; set; }
 
         /// <summary>
+        /// 公開知識的 Space（僅由 RagGateway 依伺服器設定帶入）
+        /// </summary>
+        [JsonProperty("shared_space_id", NullValueHandling = NullValueHandling.Ignore)]
+        public int? SharedSpaceId { get; set; }
+
+        /// <summary>
         /// 問題描述
         /// </summary>
         [JsonProperty("question")]

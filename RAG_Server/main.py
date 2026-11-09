@@ -200,6 +200,8 @@ class QuestionListRequest(CaseInsensitiveModel):
 
 class AskRequest(CaseInsensitiveModel):
     space_id: int = Field(gt=0)
+    # 公開知識的 Space：自己的 Space 答不出來才查。由 .NET 依伺服器設定帶入，使用者無法指定
+    shared_space_id: Optional[int] = Field(default=None, gt=0)
     question: str
     type: Optional[str] = None
 
@@ -398,6 +400,9 @@ def process_questions_to_vector(request: QuestionListRequest):
         raise HTTPException(status_code=400, detail="沒有成功處理任何問題")
 
 
+SHARED_ANSWER_PREFIX = "> 這段回答來自**公開知識**，不是你自己的筆記。\n\n"
+
+
 def generate_answer(request: AskRequest):
     """查詢 Qdrant 並產生回答（僅搜尋指定 Space）"""
     if not ensure_collection(EMBEDDING_DIMENSION):
@@ -409,13 +414,24 @@ def generate_answer(request: AskRequest):
     if request.type:
         extra.append(models.FieldCondition(key="type", match=models.MatchValue(value=request.type)))
 
-    results = client.search(
-        collection_name=COLLECTION_NAME,
-        query_vector=query_vector,
-        limit=3,
-        with_payload=True,
-        query_filter=space_filter(request.space_id, *extra)
-    )
+    def search_space(space_id: int):
+        return client.search(
+            collection_name=COLLECTION_NAME,
+            query_vector=query_vector,
+            limit=3,
+            with_payload=True,
+            query_filter=space_filter(space_id, *extra)
+        )
+
+    results = search_space(request.space_id)
+
+    # 自己的筆記優先；答不出來才看公開知識，分數一樣要過門檻
+    from_shared = False
+    if request.shared_space_id and (not results or results[0].score < SIMILAR_SCORE_THRESHOLD):
+        shared = search_space(request.shared_space_id)
+        if shared and shared[0].score >= SIMILAR_SCORE_THRESHOLD:
+            results = shared
+            from_shared = True
 
     if not results:
         raise HTTPException(status_code=400, detail="找不到相關內容")
@@ -459,7 +475,7 @@ def generate_answer(request: AskRequest):
 
     print(f"回答方式: {method}, 信心度: {confidence}, 與第二名差距: {margin}")
     return {
-        "answer": answer,
+        "answer": f"{SHARED_ANSWER_PREFIX}{answer}" if from_shared else answer,
         "confidence": confidence,
         "related": [r.payload["question"] for r in results],
         "method": method
