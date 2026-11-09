@@ -386,7 +386,8 @@ export default function MainPage() {
           {/* 對話區域：原生捲動（min-h-0 讓 flex 子元素可以縮小，內容超出時才會出現捲軸） */}
           <div className="relative min-h-0 flex-1">
           <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto p-4">
-            <div className="mx-auto max-w-3xl space-y-6 pb-4">
+            {/* role="log"：新訊息會被螢幕閱讀器念出來 */}
+            <div className="mx-auto max-w-3xl space-y-6 pb-4" role="log" aria-live="polite" aria-label="對話內容">
               {messages.map((msg, index) => (
                 <div
                   key={index}
@@ -408,7 +409,7 @@ export default function MainPage() {
                     }`}
                   >
                     {msg.role === "assistant" && !msg.error ? (
-                      <AssistantMessage content={msg.content} />
+                      <AssistantMessage content={msg.content} streaming={isStreaming && index === messages.length - 1} />
                     ) : (
                       <p className="whitespace-pre-wrap text-sm md:text-base">{msg.content}</p>
                     )}
