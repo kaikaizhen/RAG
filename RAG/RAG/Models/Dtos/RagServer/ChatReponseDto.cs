@@ -21,7 +21,7 @@ namespace RAG.Models.Dtos.RagServer
         public List<string> Related { get; set; } = new List<string>();
 
         /// <summary>
-        /// 使用的回覆方法（qa_model / direct_match / context_summary）
+        /// 使用的回覆方法（qa_model / direct_match / context_summary / llm_generate）
         /// </summary>
         public string Method { get; set; }=string.Empty;
 
