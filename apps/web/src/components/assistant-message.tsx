@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { extractNoteSources } from "@/lib/note-sources"
 
 type MarkdownComponent = React.ComponentType<{ content: string }>
 
@@ -10,6 +11,7 @@ type MarkdownComponent = React.ComponentType<{ content: string }>
  */
 export function AssistantMessage({ content }: { content: string }) {
   const [Markdown, setMarkdown] = React.useState<MarkdownComponent | null>(null)
+  const { body, sources } = React.useMemo(() => extractNoteSources(content), [content])
 
   React.useEffect(() => {
     let alive = true
@@ -21,5 +23,23 @@ export function AssistantMessage({ content }: { content: string }) {
     }
   }, [])
 
-  return Markdown ? <Markdown content={content} /> : <p className="whitespace-pre-wrap text-sm md:text-base">{content}</p>
+  return (
+    <>
+      {Markdown ? <Markdown content={body} /> : <p className="whitespace-pre-wrap text-sm md:text-base">{body}</p>}
+      {sources.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <span>來源</span>
+          {sources.map((source) => (
+            <span
+              key={`${source.kind}#${source.ref}`}
+              title={`learning-notes ${source.kind}#${source.ref}`}
+              className="rounded-full border bg-background/60 px-2 py-0.5"
+            >
+              {source.label}
+            </span>
+          ))}
+        </div>
+      )}
+    </>
+  )
 }
