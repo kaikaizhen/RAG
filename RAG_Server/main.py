@@ -7,6 +7,7 @@ from qdrant_client.http import models
 from typing import Optional, List
 import hmac
 import os
+import re
 import uuid
 import requests
 
@@ -30,7 +31,13 @@ DIRECT_MATCH_THRESHOLD = float(os.getenv("DIRECT_MATCH_THRESHOLD", "0.7"))
 DIRECT_MATCH_MARGIN = float(os.getenv("DIRECT_MATCH_MARGIN", "0.05"))
 SIMILAR_SCORE_THRESHOLD = float(os.getenv("SIMILAR_SCORE_THRESHOLD", "0.50"))
 # 摘要模式（context_summary）回覆的最大字數；只在區塊邊界截斷，所以實際可能略少
-SUMMARY_MAX_CHARS = int(os.getenv("SUMMARY_MAX_CHARS", "500"))
+SUMMARY_MAX_CHARS = int(os.getenv("SUMMARY_MAX_CHARS", "2000"))
+# 生成回答（選用）：設定 OLLAMA_CHAT_MODEL 後，沒有 direct match 時改由 LLM 依檢索到的內容回答；
+# 未設定或 LLM 失敗時維持 context_summary，不影響原本的行為
+OLLAMA_CHAT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "")
+OLLAMA_CHAT_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_CHAT_TIMEOUT_SECONDS", "60"))
+# 送給 LLM 的參考資料上限（字數），避免超過模型的 context
+GENERATE_CONTEXT_MAX_CHARS = int(os.getenv("GENERATE_CONTEXT_MAX_CHARS", "6000"))
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 # .NET API 與本服務共用的內部金鑰；未設定時所有受保護端點一律拒絕（fail-closed）
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
@@ -94,6 +101,45 @@ def embed_text(text: str) -> List[float]:
         print(f"Embedding 維度 {len(vector)} 與設定 {EMBEDDING_DIMENSION} 不符")
         raise HTTPException(status_code=503, detail=f"Embedding 維度 {len(vector)} 與設定 {EMBEDDING_DIMENSION} 不符")
     return vector
+
+
+GENERATE_SYSTEM_PROMPT = """你是知識庫助理，只能根據使用者訊息裡的「參考資料」回答問題。
+- 使用繁體中文，以 Markdown 回答，直接回應問題，不要逐篇複述參考資料。
+- 參考資料沒有提到的內容不要補充或猜測；資料不足以回答時，說明缺少哪些資訊。
+- 參考資料標示為推測或未確認的內容，回答時也要說明。
+- 參考資料結尾的「來源：」行，回答有用到哪一篇，就在回答最後原樣列出那一行。"""
+
+THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+def generate_with_llm(question: str, answers: List[str]) -> Optional[str]:
+    """把檢索到的答案交給 Ollama 的聊天模型整理成回答；未啟用、失敗或回應空白時回 None，由呼叫端退回摘要模式"""
+    if not OLLAMA_CHAT_MODEL:
+        return None
+    references = "\n\n".join(f"### 參考資料 {i}\n\n{answer}" for i, answer in enumerate(answers, 1))
+    if len(references) > GENERATE_CONTEXT_MAX_CHARS:
+        references = truncate_markdown(references, GENERATE_CONTEXT_MAX_CHARS)
+    try:
+        response = requests.post(
+            f"{OLLAMA_BASE_URL}/api/chat",
+            json={
+                "model": OLLAMA_CHAT_MODEL,
+                "stream": False,
+                "messages": [
+                    {"role": "system", "content": GENERATE_SYSTEM_PROMPT},
+                    {"role": "user", "content": f"參考資料：\n\n{references}\n\n問題：{question}"},
+                ],
+            },
+            timeout=OLLAMA_CHAT_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        content = (response.json().get("message") or {}).get("content") or ""
+    except (requests.RequestException, ValueError, AttributeError) as e:
+        print(f"Ollama 生成回答失敗，改用內容摘要: {e}")
+        return None
+    # 會思考的模型（例如 qwen3）可能把思考過程放在 <think> 裡，不屬於回答
+    content = normalize_newlines(THINK_BLOCK.sub("", content)).strip()
+    return content or None
 
 
 def ollama_health() -> dict:
@@ -400,10 +446,16 @@ def generate_answer(request: AskRequest):
         answer = normalize_newlines(best_match.payload["answer"])
         method = "direct_match"
     else:
-        print("執行內容摘要")
-        summary = truncate_markdown(context, SUMMARY_MAX_CHARS)
-        answer = f"根據相關內容：\n\n{summary}" if summary != context else context
-        method = "context_summary"
+        generated = generate_with_llm(request.question, unique_answers)
+        if generated:
+            print("執行 LLM 生成回答")
+            answer = generated
+            method = "llm_generate"
+        else:
+            print("執行內容摘要")
+            summary = truncate_markdown(context, SUMMARY_MAX_CHARS)
+            answer = f"根據相關內容：\n\n{summary}" if summary != context else context
+            method = "context_summary"
 
     print(f"回答方式: {method}, 信心度: {confidence}, 與第二名差距: {margin}")
     return {

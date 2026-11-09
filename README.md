@@ -53,7 +53,7 @@ flowchart TD
 
 1. 在 `.NET API` 建立問答資料，呼叫 `RAG_Server` 的 `/questionsToVector` 轉成向量寫入 Qdrant。
 2. 使用者提問，`.NET API` 呼叫 `/ask`，`RAG_Server` 以語意相似度檢索。
-3. 相似度超過門檻時直接回傳最相符的答案（`direct_match`）；否則彙整前幾筆內容做摘要（`context_summary`）。
+3. 相似度超過門檻時直接回傳最相符的答案（`direct_match`）；否則彙整前幾筆內容做摘要（`context_summary`）。有設定 `OLLAMA_CHAT_MODEL` 時，改由 LLM 依前幾筆內容回答（`llm_generate`），失敗時仍退回摘要。
 4. `.NET API` 把問答結果寫入 `ChatHeader` / `ChatLog` 保存對話歷史。
 
 ## 🧰 技術棧
@@ -223,7 +223,10 @@ docker run -d -p 8007:8007 -e QDRANT_HOST=<qdrant-host> -e QDRANT_PORT=6333 --na
 | `OLLAMA_EMBED_MODEL` | `qwen3-embedding:0.6b` | Embedding 模型 |
 | `EMBEDDING_DIMENSION` | `1024` | 向量維度（與回傳不符時拒絕寫入 / 查詢） |
 | `DIRECT_MATCH_THRESHOLD` / `DIRECT_MATCH_MARGIN` / `SIMILAR_SCORE_THRESHOLD` | `0.70` / `0.05` / `0.50` | `/ask` 判斷門檻；與 .NET ContextRuntime 共用同一組值 |
-| `SUMMARY_MAX_CHARS` | `500` | 摘要回覆的最大字數（只在段落 / 程式碼區塊邊界截斷） |
+| `SUMMARY_MAX_CHARS` | `2000` | 摘要回覆的最大字數（只在段落 / 程式碼區塊邊界截斷） |
+| `OLLAMA_CHAT_MODEL` | （空） | 生成回答用的 Ollama 聊天模型；留空不啟用，維持內容摘要 |
+| `OLLAMA_CHAT_TIMEOUT_SECONDS` | `60` | 生成回答的逾時秒數，逾時退回內容摘要 |
+| `GENERATE_CONTEXT_MAX_CHARS` | `6000` | 送給 LLM 的參考資料上限字數 |
 | `CORS_ORIGINS` | `*` | 允許來源，多筆以逗號分隔 |
 
 ## 🔌 API 一覽
