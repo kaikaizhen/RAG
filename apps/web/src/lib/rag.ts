@@ -161,6 +161,8 @@ export function describeError(error: unknown, fallback = "發生錯誤，請稍�
       case 503:
         return "服務暫時無法使用，請稍後再試"
       default:
+        // .NET 把向量服務的失敗都轉成這類訊息，對使用者沒有意義
+        if (/ API Error$/.test(error.message)) return "問答引擎暫時連不上，通常是伺服器的問題，請稍後再試"
         return error.message || fallback
     }
   }

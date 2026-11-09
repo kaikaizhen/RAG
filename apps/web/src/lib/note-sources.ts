@@ -21,7 +21,10 @@ function labelOf(kind: NoteSource["kind"], ref: string): string {
 /** 改動紀錄和觀念卡用 ?id= 開單篇；規則沒有 id，開該專案的規則頁 */
 function hrefOf(kind: NoteSource["kind"], ref: string): string | undefined {
   if (!NOTES_URL) return undefined
-  if (kind === "rule") return `${NOTES_URL}/rules?${new URLSearchParams({ project: ref.split("／")[0] ?? "" })}`
+  if (kind === "rule") {
+    const [project = "", module] = ref.split("／")
+    return `${NOTES_URL}/rules?${new URLSearchParams(module ? { project, module } : { project })}`
+  }
   return `${NOTES_URL}/${kind === "entry" ? "entries" : "concepts"}?id=${encodeURIComponent(ref)}`
 }
 

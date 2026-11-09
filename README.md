@@ -210,6 +210,7 @@ docker run -d -p 8007:8007 -e QDRANT_HOST=<qdrant-host> -e QDRANT_PORT=6333 --na
 | `ConnectionStrings:DefaultConnection` | `ConnectionStrings__DefaultConnection` | MySQL 連線字串 |
 | `RagOption:BaseUrl` | `RagOption__BaseUrl` | RAG_Server 服務基底位址 |
 | `RagOption:AskUrl` 等 | `RagOption__AskUrl` | 各端點路徑，預設值可直接使用 |
+| `RagOption:PublicSpaceId` | `RagOption__PublicSpaceId` | 公開知識的 Space；自己的 Space 答不出來才查，0 或不設定表示不啟用 |
 
 `encryption_config.json` 內的 `JWT_SECRET_KEY` 是 JWT 簽章金鑰，**務必**自行產生且不得納入版控。
 

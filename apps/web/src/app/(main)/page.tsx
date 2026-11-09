@@ -234,7 +234,7 @@ export default function MainPage() {
       if (error instanceof RagApiError && error.status < 500) console.warn("發送訊息未成功:", error.message)
       else console.error("發送訊息失敗:", error)
       // 找不到可靠的相關內容時，後端回 4xx 並附原因，直接顯示給使用者
-      updateLastMessage(() => ({ role: "assistant", content: describeError(error, "抱歉，發生了錯誤。請稍後再試。"), error: true, notFound: error instanceof RagApiError && error.status === 404 }))
+      updateLastMessage(() => ({ role: "assistant", content: describeError(error, "抱歉，發生了錯誤。請稍後再試。"), error: true, notFound: error instanceof RagApiError && error.status === 404 && !/ChatID/i.test(error.message) }))
     } finally {
       setIsStreaming(false)
       abortControllerRef.current = null
