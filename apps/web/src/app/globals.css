@@ -178,3 +178,16 @@
 .dark .hljs-title, .dark .hljs-section, .dark .hljs-function .hljs-title, .dark .hljs-class .hljs-title { color: #d2a8ff; }
 .dark .hljs-built_in, .dark .hljs-attr, .dark .hljs-params, .dark .hljs-meta { color: #ffa657; }
 .dark .hljs-deletion { color: #ffdcd7; background: #67060c; }
+
+
+/* 動畫：和學習筆記網站同一組節奏，全部尊重「減少動態效果」 */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [role="log"] > div { animation: rise 0.36s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+  [role="log"] a, [role="log"] button { transition: background-color 0.18s, color 0.18s, transform 0.18s; }
+  [role="log"] a:hover { transform: translateY(-1px); }
+  [role="log"] a:active, [role="log"] button:active { transform: scale(0.97); }
+}

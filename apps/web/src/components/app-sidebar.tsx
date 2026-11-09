@@ -38,7 +38,9 @@ import {
   Settings,
   Trash2,
   Palette,
+  NotebookPen,
 } from "lucide-react"
+import { notesUrl } from "@/lib/note-sources"
 import * as React from "react"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeColorPicker } from "@/components/theme-color-picker"
@@ -287,6 +289,16 @@ export function AppSidebar() {
                   <span>新對話</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {notesUrl && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="我的筆記">
+                    <a href={notesUrl} target="_blank" rel="noopener noreferrer">
+                      <NotebookPen className="h-4 w-4" />
+                      <span>我的筆記</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

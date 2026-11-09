@@ -23,12 +23,12 @@ export function useTheme() {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = React.useState<"light" | "dark">("light")
-  const [themeColor, setThemeColorState] = React.useState<string>("gray")
+  const [themeColor, setThemeColorState] = React.useState<string>("ink")
 
   React.useEffect(() => {
     // 從 localStorage 讀取主題設定
     const storedTheme = localStorage.getItem("theme") as "light" | "dark" | null
-    const storedColor = localStorage.getItem("themeColor") || "gray"
+    const storedColor = localStorage.getItem("themeColor") || "ink"
 
     if (storedTheme) {
       setThemeState(storedTheme)

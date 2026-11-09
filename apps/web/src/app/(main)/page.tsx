@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { AssistantMessage } from "@/components/assistant-message"
+import { gapHref } from "@/lib/note-sources"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -23,6 +24,8 @@ interface Message {
   role: "user" | "assistant"
   content: string
   error?: boolean
+  /** 知識庫裡找不到答案（不是系統錯誤），可以把問題交給筆記 */
+  notFound?: boolean
 }
 
 /** 不指定種類 = 搜尋目前 Space 的全部知識 */
@@ -231,7 +234,7 @@ export default function MainPage() {
       if (error instanceof RagApiError && error.status < 500) console.warn("發送訊息未成功:", error.message)
       else console.error("發送訊息失敗:", error)
       // 找不到可靠的相關內容時，後端回 4xx 並附原因，直接顯示給使用者
-      updateLastMessage(() => ({ role: "assistant", content: describeError(error, "抱歉，發生了錯誤。請稍後再試。"), error: true }))
+      updateLastMessage(() => ({ role: "assistant", content: describeError(error, "抱歉，發生了錯誤。請稍後再試。"), error: true, notFound: error instanceof RagApiError && error.status === 404 }))
     } finally {
       setIsStreaming(false)
       abortControllerRef.current = null
@@ -412,6 +415,16 @@ export default function MainPage() {
                       <AssistantMessage content={msg.content} streaming={isStreaming && index === messages.length - 1} />
                     ) : (
                       <p className="whitespace-pre-wrap text-sm md:text-base">{msg.content}</p>
+                    )}
+                    {msg.notFound && gapHref(messages[index - 1]?.content ?? "") && (
+                      <a
+                        href={gapHref(messages[index - 1]?.content ?? "")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex min-h-8 items-center gap-1 rounded-full border border-current/30 px-3 text-xs font-medium transition-colors hover:bg-background/60"
+                      >
+                        交給筆記，下次就答得出來
+                      </a>
                     )}
                   </div>
                 </div>

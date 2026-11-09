@@ -38,6 +38,11 @@ namespace RAG.Commons.Options
         public string InternalApiKey { get; set; } = string.Empty;
 
         /// <summary>
+        /// 公開知識的 Space；所有人問答時，自己的 Space 答不出來才查這裡。0 表示不啟用。只由伺服器設定決定
+        /// </summary>
+        public int PublicSpaceId { get; set; }
+
+        /// <summary>
         /// 查詢目前向量資料庫種類
         /// </summary>
         public string CollectionUrl { get; set; } = "/collections";

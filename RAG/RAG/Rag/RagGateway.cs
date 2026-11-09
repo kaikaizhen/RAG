@@ -42,7 +42,8 @@ namespace RAG.Rag
         {
             ArgumentNullException.ThrowIfNull(scope);
 
-            var content = new SendChatDto { SpaceId = scope.SpaceId, Question = question, Type = type };
+            var sharedSpaceId = _ragOption.PublicSpaceId > 0 && _ragOption.PublicSpaceId != scope.SpaceId ? _ragOption.PublicSpaceId : (int?)null;
+            var content = new SendChatDto { SpaceId = scope.SpaceId, SharedSpaceId = sharedSpaceId, Question = question, Type = type };
 
             using var response = await SendAsync(HttpMethod.Post, $"{_ragOption.BaseUrl}{_ragOption.AskUrl}", content, cancellationToken);
             // RAG Server 以 400 表示「沒有足夠可靠的相關內容」（低於門檻或查無資料），屬正常的查無結果，不是伺服器錯誤
