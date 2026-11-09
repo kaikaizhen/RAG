@@ -29,15 +29,26 @@ export function AssistantMessage({ content }: { content: string }) {
       {sources.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>來源</span>
-          {sources.map((source) => (
-            <span
-              key={`${source.kind}#${source.ref}`}
-              title={`learning-notes ${source.kind}#${source.ref}`}
-              className="rounded-full border bg-background/60 px-2 py-0.5"
-            >
-              {source.label}
-            </span>
-          ))}
+          {sources.map((source) => {
+            const key = `${source.kind}#${source.ref}`
+            const className = "rounded-full border bg-background/60 px-2 py-0.5"
+            return source.href ? (
+              <a
+                key={key}
+                href={source.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`在筆記網站查看 learning-notes ${key}`}
+                className={`${className} transition-colors hover:bg-background hover:text-foreground`}
+              >
+                {source.label}
+              </a>
+            ) : (
+              <span key={key} title={`learning-notes ${key}`} className={className}>
+                {source.label}
+              </span>
+            )
+          })}
         </div>
       )}
     </>
