@@ -264,6 +264,48 @@ def dedup_blocks(text: str) -> str:
     return "\n\n".join(unique)
 
 
+# learning-notes 同步進來的答案最後一行是來源標記，前端會把它變成可點的來源標籤
+SOURCE_MARKER = re.compile(r"^[ \t]*來源：learning-notes (?:entry|concept|rule)#.+$", re.MULTILINE)
+
+
+def summarize_answers(answers: List[str], limit: int) -> tuple:
+    """
+    摘要模式的回答：以「一篇答案」為單位放入，不把一篇切成兩半；重複的段落只留一次。
+    放不下的答案不顯示內文，但保留它的來源標記，使用者還是能點來源看全文。
+    回傳 (回答, 是否有省略)。
+    """
+    seen = set()
+    parts: List[str] = []
+    omitted_markers: List[str] = []
+    total = 0
+    truncated = False
+    for answer in answers:
+        markers = [m.strip() for m in SOURCE_MARKER.findall(answer)]
+        blocks = []
+        for block in split_blocks(SOURCE_MARKER.sub("", normalize_newlines(answer))):
+            key = block.strip()
+            if key and key not in seen:
+                seen.add(key)
+                blocks.append(block)
+        if not blocks:
+            omitted_markers += markers
+            continue
+        body = "\n\n".join(blocks)
+        if parts and total + len(body) > limit:
+            omitted_markers += markers
+            continue
+        if len(body) > limit:
+            body = truncate_markdown(body, limit)
+            truncated = True
+        parts.append("\n\n".join([body, *markers]))
+        total += len(body) + 2
+    text = "\n\n".join(parts)
+    omitted = truncated or bool(omitted_markers)
+    if omitted_markers:
+        text += "\n\n" + "\n".join(dict.fromkeys(omitted_markers))
+    return text, omitted
+
+
 def truncate_markdown(text: str, limit: int) -> str:
     """
     把 Markdown 截短到約 limit 字：只在區塊（段落 / 完整的程式碼區塊）邊界截斷；
@@ -445,9 +487,6 @@ def generate_answer(request: AskRequest):
             seen_answers.add(ans)
             unique_answers.append(ans)
 
-    # 摘要模式要用的內容：答案之間以空行分隔（Markdown 的段落 / 清單 / 程式碼區塊才不會黏在一起）
-    context = dedup_blocks("\n\n".join(unique_answers))
-
     # results 依分數由高到低；direct match 需同時超過門檻且與第二名拉開差距
     best_match = results[0]
     confidence = best_match.score
@@ -469,8 +508,8 @@ def generate_answer(request: AskRequest):
             method = "llm_generate"
         else:
             print("執行內容摘要")
-            summary = truncate_markdown(context, SUMMARY_MAX_CHARS)
-            answer = f"根據相關內容：\n\n{summary}" if summary != context else context
+            summary, omitted = summarize_answers(unique_answers, SUMMARY_MAX_CHARS)
+            answer = f"根據相關內容：\n\n{summary}" if omitted else summary
             method = "context_summary"
 
     print(f"回答方式: {method}, 信心度: {confidence}, 與第二名差距: {margin}")
