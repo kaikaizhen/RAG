@@ -33,6 +33,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // 讓版面延伸到瀏海與底部安全區；各處以 env(safe-area-inset-*) 自行留白（底部分頁列已處理）
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },

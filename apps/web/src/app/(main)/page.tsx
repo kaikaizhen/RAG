@@ -6,7 +6,6 @@ import { gapHref } from "@/lib/note-sources"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +44,18 @@ const ALL_TYPES = "all"
  */
 type SpaceScope = "current" | "all"
 const SCOPE_KEY = "rag.searchScope"
+
+/** 目前的對話編號記在這個分頁：手機版切到別的分頁（歷史、暫存區…）再回來時，接續同一個對話 */
+const CHAT_KEY = "rag.currentChat"
+
+function storeChatId(chatId: string) {
+  try {
+    if (chatId) window.sessionStorage.setItem(CHAT_KEY, chatId)
+    else window.sessionStorage.removeItem(CHAT_KEY)
+  } catch {
+    /* 被封鎖時只是回來後不會自動接續 */
+  }
+}
 
 function readStoredScope(): SpaceScope {
   try {
@@ -105,6 +116,21 @@ export default function MainPage() {
     if (stickToBottomRef.current) scrollToBottom()
   }, [messages, scrollToBottom])
 
+  // 手機版：鍵盤開啟 / 收起、分頁列顯示 / 隱藏會改變對話區高度；原本就在底部的話，維持在底部，最新的訊息才不會被輸入框蓋住
+  React.useEffect(() => {
+    const keepBottom = () => {
+      if (stickToBottomRef.current) requestAnimationFrame(() => scrollToBottom())
+    }
+    window.addEventListener("resize", keepBottom)
+    window.visualViewport?.addEventListener("resize", keepBottom)
+    document.addEventListener("focusin", keepBottom)
+    return () => {
+      window.removeEventListener("resize", keepBottom)
+      window.visualViewport?.removeEventListener("resize", keepBottom)
+      document.removeEventListener("focusin", keepBottom)
+    }
+  }, [scrollToBottom])
+
   React.useEffect(() => {
     // 檢測是否為手機版
     const checkMobile = () => {
@@ -130,6 +156,7 @@ export default function MainPage() {
     try {
       const logs = await getClient().chat.logs(chatId)
       setCurrentChatId(chatId)
+      storeChatId(chatId)
       stickToBottomRef.current = true
       setMessages(
         logs.flatMap((log): Message[] => [
@@ -148,6 +175,7 @@ export default function MainPage() {
     abortControllerRef.current?.abort()
     setMessages([])
     setCurrentChatId("")
+    storeChatId("")
   }, [])
 
   React.useEffect(() => {
@@ -176,6 +204,20 @@ export default function MainPage() {
     const interval = setInterval(updateGreeting, 60000)
 
     loadQaTypes()
+
+    // 從「歷史」分頁帶 ?chat=<編號> 進來就開啟那個對話；否則接續這個分頁上次的對話
+    const params = new URLSearchParams(window.location.search)
+    const requested = params.get("chat")
+    if (requested) window.history.replaceState(null, "", window.location.pathname)
+    let resumed: string | null = requested
+    if (!resumed) {
+      try {
+        resumed = window.sessionStorage.getItem(CHAT_KEY)
+      } catch {
+        resumed = null
+      }
+    }
+    if (resumed) void loadChat(resumed)
 
     // 只有加入多個空間時才需要「所有空間」選項
     setSpaceScopeState(readStoredScope())
@@ -262,6 +304,7 @@ export default function MainPage() {
         if (event.type === "chat") {
           // 新對話第一次收到編號；之後的追問都接在同一個對話上
           setCurrentChatId(event.chatId)
+          storeChatId(event.chatId)
         } else {
           answer += event.text
           updateLastMessage(() => ({ role: "assistant", content: answer }))
@@ -405,15 +448,14 @@ export default function MainPage() {
   ), [message, isStreaming, isMobile, handleSubmit, handleKeyDown, currentTypeId, currentTypeName, qaTypes, hasManySpaces, spaceScope, setSpaceScope])
 
   return (
-    <div className="flex h-dvh w-full flex-col">
-      {/* 手機版頂部導航列 */}
-      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
-        <SidebarTrigger />
+    <div className="flex h-full w-full flex-col max-md:bg-background">
+      {/* 手機版頂部列：沒有側邊欄，導航在底部分頁列；這裡只放品牌與「新對話」 */}
+      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b bg-background px-4 md:hidden">
         <div className="flex items-center gap-2">
           <Logo size={28} />
-          <span className="font-semibold">RAGence</span>
+          <span className="text-lg font-bold">RAGence</span>
         </div>
-        <Button variant="ghost" size="sm" onClick={startNewChat}>
+        <Button variant="ghost" size="sm" className="h-10 rounded-full px-4" onClick={startNewChat} disabled={messages.length === 0 && !isStreaming}>
           新對話
         </Button>
       </header>

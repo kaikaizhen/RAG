@@ -32,7 +32,8 @@
 - 🏠 **Space 隔離** — 個人 Space 與共用 Space，角色分 owner / member / viewer，授權一律由伺服器判斷
 - 💬 **串流聊天室** — SSE 串流輸出、Markdown 渲染、程式碼高亮與複製、輸出時仍可往上捲動
 - ✉️ **自行註冊** — 信箱 + Gmail 驗證信，點連結後才建立帳號；密碼以 PBKDF2-SHA512 儲存
-- 📱 **PWA** — 可安裝到桌面 / 手機，離線時顯示提示頁
+- 📱 **PWA 與手機版** — 可安裝到桌面 / 手機；手機版是原生 App 式的底部分頁（問答 / 歷史 / 暫存區 / 我的），長按對話可刪除，登入保持 30 天
+- 🧩 **開放平台** — 應用程式權杖、暫存區審查、Webhook（HTTPS）與跨空間檢索，讓你自己的 AI 與服務接進來
 - 🔎 **SEO / GEO** — 使用者角度的 `/about` 介紹頁、sitemap、robots 與 `llms.txt`
 - 🧩 **共用 SDK** — `@rag/client-sdk` 封裝 API、Token 更新與串流解析
 
@@ -241,7 +242,11 @@ docker run -d -p 8007:8007 -e QDRANT_HOST=<qdrant-host> -e QDRANT_PORT=6333 --na
 | `GET` `POST` `PUT` `DELETE` | `/User` | 使用者管理 |
 | `GET` `POST` `PUT` `DELETE` | `/QaType`、`/QaTypeItem` | 問答分類與分類項目 |
 | `GET` `POST` `PUT` `DELETE` | `/Question` | 問答內容（新增 / 更新 / 刪除會同步向量） |
-| `POST` | `/Chat`、`/Chat/ChatStream` | 提問（一般 / SSE 串流） |
+| `POST` | `/Chat`、`/Chat/ChatStream` | 提問（一般 / SSE 串流）；`scope` 可選 `current` / `all` |
+| `POST` | `/Knowledge/search` | 只檢索、不生成（可用應用程式權杖）；`scope` 同上 |
+| `GET` `POST` `DELETE` | `/ApiToken` | 應用程式權杖（只接受登入） |
+| `GET` `POST` `PUT` | `/Inbox`、`/Inbox/{id}`、`/Inbox/{id}/accept`、`/Inbox/{id}/reject` | 暫存區（建立可用權杖；審查只接受登入） |
+| `GET` `POST` `PUT` `DELETE` | `/Webhook`、`/Webhook/{id}/test`、`/Webhook/{id}/deliveries` | Webhook 設定、測試、送出紀錄與重送 |
 | `GET` `DELETE` | `/Chat`、`/Chat/{chatId}` | 對話清單、訊息紀錄與刪除 |
 
 完整規格請參考執行後的 Swagger 頁面。
@@ -252,7 +257,8 @@ docker run -d -p 8007:8007 -e QDRANT_HOST=<qdrant-host> -e QDRANT_PORT=6333 --na
 | --- | --- | --- |
 | `GET` | `/`、`/model_status` | 服務與 Ollama embedding 狀態 |
 | `POST` | `/questionsToVector` | 批次將問題轉向量並寫入 Qdrant |
-| `POST` | `/ask` | 語意檢索並產生回答 |
+| `POST` | `/ask` | 語意檢索並產生回答（`space_ids` 可涵蓋多個空間） |
+| `POST` | `/search` | 只檢索、不生成（`space_ids` 同上） |
 | `GET` | `/questions` | 列出已建立的問題（預設上限 100 筆） |
 | `DELETE` | `/questions/{question_id}`、`/delete_type/{type_value}` | 刪除指定問題 / 分類的向量 |
 | `GET` | `/collections` | 列出所有 Collection |
@@ -276,7 +282,8 @@ docker run -d -p 8007:8007 -e QDRANT_HOST=<qdrant-host> -e QDRANT_PORT=6333 --na
 - **暫存區**：草稿不進向量資料庫；本人在前端審查、可編輯，接受後才寫入知識庫（預設狀態 `Inferred`）。重複送出或連點只會產生一筆。
 - **Webhook**：草稿被建立 / 接受 / 拒絕時，伺服器以簽章的 **HTTPS** 請求通知使用者的網址。網址必須是公開網路上的 https（不接受 `http://`、localhost、內網與雲端中繼位址；送出時再驗證解析出的 IP，防 DNS 重綁）。請求帶 `X-RAG-Signature`（HMAC-SHA256）與時間戳，失敗依 1 分 / 5 分 / 30 分 / 2 小時 / 12 小時退避重試（共 6 次），用完標記 Dead，可手動重送；連續 5 筆都送不出去會自動停用。
 - **檢索範圍**：聊天與 `/Knowledge/search` 預設只找目前的空間；帶 `scope: "all"` 則涵蓋你所有可讀的空間（角色有 `knowledge.read`、membership 與空間都啟用；限定空間的權杖再取交集），每筆結果標明所屬空間。範圍由伺服器依 membership 決定，client 只能選「current / all」，不能指定空間編號；回查資料庫時再限制一次，即使向量服務回了範圍外的命中也會被擋掉。寫入一律只進目前的空間。
-- 管理頁面在前端「開發者」，審查在「暫存區」；Postman 檔案見 `RAG/docs/`。
+- **在哪裡操作**：前端「開發者」頁（電腦版在側邊欄；手機版在「我的」→「開發者」）建立權杖與 Webhook、複製 Skill 範本；審查在「暫存區」。
+- **Postman**：後端 .NET 的 Collection 與 OpenAPI 在 `RAG/docs/`（先「驗證」登入，token 會自動帶入）；rag-ai 的在 `RAG_Server/docs/`。由 `node scripts/export-postman.mjs` 產生。
 
 **上線順序**：備份 → 執行 `RAG/RAG/Migrations/Scripts/20261108-api-tokens-and-inbox.sql` 與 `20261108-webhooks.sql` → 部署新版 API 與前端。順序反了，API 啟動後查不到新表會出錯。
 

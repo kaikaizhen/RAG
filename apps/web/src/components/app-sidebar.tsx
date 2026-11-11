@@ -50,6 +50,7 @@ import { Separator } from "@/components/ui/separator"
 import { SpaceSwitcher } from "@/components/space-switcher"
 import { Logo } from "@/components/logo"
 import { useLongPress } from "@/hooks/use-long-press"
+import { formatRelativeTime } from "@/lib/format-time"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -229,27 +230,7 @@ export function AppSidebar() {
   }
 
   
-  const formatTime = (dateString?: string) => {
-    if (!dateString) return ""
-    
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInMs = now.getTime() - date.getTime()
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
-    
-    if (diffInHours < 1) {
-      return "剛才"
-    } else if (diffInHours < 24) {
-      return `${diffInHours} 小時前`
-    } else if (diffInDays === 1) {
-      return "昨天"
-    } else if (diffInDays < 7) {
-      return `${diffInDays} 天前`
-    } else {
-      return date.toLocaleDateString("zh-TW")
-    }
-  }
+  const formatTime = formatRelativeTime
 
   return (
     <Sidebar collapsible="icon">
