@@ -191,3 +191,30 @@
   [role="log"] a:hover { transform: translateY(-1px); }
   [role="log"] a:active, [role="log"] button:active { transform: scale(0.97); }
 }
+
+/* ---------------------------------------------------------------
+   手機版（含 PWA）版面：底部分頁列 + 安全區
+   分頁列高 4rem；主要區域底部留出同樣的空間（再加 iOS Home Indicator 的安全區）。
+   輸入文字時（鍵盤開啟，html[data-kb="open"]）分頁列隱藏，空間讓給輸入。
+   --------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .mobile-main {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    /* 往下拉重新整理保持可用；只擋「捲動到底後把整個頁面拉動」的連鎖捲動 */
+    overscroll-behavior-y: contain;
+  }
+  html[data-kb="open"] .mobile-main {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  html[data-kb="open"] .mobile-nav {
+    display: none;
+  }
+}
+
+/* 觸控裝置：避免雙擊縮放與點擊時的灰色閃爍，維持原生 App 的手感 */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+button, a, [role="button"] {
+  touch-action: manipulation;
+}

@@ -106,10 +106,10 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4 py-6 md:p-8">
+    <div className="mx-auto max-w-3xl space-y-4 px-4 pb-8 pt-6 md:p-8">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <InboxIcon className="h-6 w-6" />
+        <h1 className="flex items-center gap-2 text-[28px] font-bold leading-tight tracking-tight md:text-2xl">
+          <InboxIcon className="hidden h-6 w-6 md:block" />
           暫存區
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
