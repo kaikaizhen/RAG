@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { describeError, getClient } from "@/lib/rag"
 
@@ -20,6 +21,19 @@ const DELIVERY_STATUS: Record<string, { label: string; className: string }> = {
   Succeeded: { label: "已送達", className: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
   Pending: { label: "等待重試", className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
   Dead: { label: "送不出去", className: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" },
+}
+
+/** 一次可以填好幾個網址：以逗號、空白或換行分隔；重複的只留一個 */
+function parseUrls(input: string): string[] {
+  return [...new Set(input.split(/[\s,，、]+/).map((u) => u.trim()).filter(Boolean))]
+}
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
 }
 
 const formatTime = (value?: string | null) => (value ? new Date(value + (value.endsWith("Z") ? "" : "Z")).toLocaleString("zh-TW") : "—")
@@ -42,7 +56,7 @@ export function WebhooksSection() {
   const [hooks, setHooks] = React.useState<Webhook[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState("")
-  const [created, setCreated] = React.useState<CreatedWebhook | null>(null)
+  const [created, setCreated] = React.useState<CreatedWebhook[]>([])
   const [copied, setCopied] = React.useState(false)
 
   const [name, setName] = React.useState("")
@@ -105,14 +119,31 @@ export function WebhooksSection() {
     busyRef.current = true
     setCreating(true)
     setError("")
+    const urls = parseUrls(url)
+    const made: CreatedWebhook[] = []
+    const failed: string[] = []
+    let lastError: unknown = null
     try {
-      const result = await getClient().webhooks.create({ name: name.trim(), url: url.trim(), events })
-      setCreated(result)
-      setName("")
-      setUrl("")
+      // 一個網址一個 Webhook（各有自己的密鑰、送出紀錄與重試）；依序建立，失敗的不影響其他的
+      for (const target of urls) {
+        try {
+          const label = urls.length > 1 ? `${name.trim()}（${hostOf(target)}）`.slice(0, 50) : name.trim()
+          made.push(await getClient().webhooks.create({ name: label, url: target, events }))
+        } catch (err) {
+          failed.push(target)
+          lastError = err
+        }
+      }
+      setCreated(made)
+      if (failed.length === 0) {
+        setName("")
+        setUrl("")
+      } else {
+        // 只留下失敗的網址，修正後可以直接再按一次
+        setUrl(failed.join(",\n"))
+        setError(`${failed.length} 個沒有建立成功：${describeError(lastError, "建立失敗")}`)
+      }
       await load()
-    } catch (err) {
-      setError(describeError(err, "建立失敗"))
     } finally {
       busyRef.current = false
       setCreating(false)
@@ -167,8 +198,9 @@ export function WebhooksSection() {
     }
   }
 
-  const httpsOnly = url.trim() === "" || /^https:\/\//i.test(url.trim())
-  const canCreate = name.trim() !== "" && url.trim() !== "" && httpsOnly && events.length > 0
+  const urls = parseUrls(url)
+  const httpsOnly = urls.every((u) => /^https:\/\//i.test(u))
+  const canCreate = name.trim() !== "" && urls.length > 0 && httpsOnly && events.length > 0
 
   return (
     <Card>
@@ -191,19 +223,22 @@ export function WebhooksSection() {
           </div>
         )}
 
-        {created && (
-          <div className="space-y-2 rounded-md border border-primary p-3">
-            <p className="text-sm font-medium">請立刻複製簽章密鑰，離開後就看不到了</p>
-            <code className="block break-all rounded bg-muted p-2 text-sm">{created.secret}</code>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => copy(created.secret ?? "")}>
-                {copied ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
-                {copied ? "已複製" : "複製密鑰"}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setCreated(null)}>
-                我已保存
-              </Button>
-            </div>
+        {created.length > 0 && (
+          <div className="space-y-3 rounded-md border border-primary p-3">
+            <p className="text-sm font-medium">請立刻複製簽章密鑰，離開後就看不到了{created.length > 1 ? "（每個 Webhook 各有自己的密鑰）" : ""}</p>
+            {created.map((hook) => (
+              <div key={hook.id} className="space-y-1">
+                <p className="break-all text-xs text-muted-foreground">{hook.name}</p>
+                <code className="block break-all rounded bg-muted p-2 text-sm">{hook.secret}</code>
+                <Button type="button" variant="outline" size="sm" onClick={() => copy(hook.secret ?? "")}>
+                  {copied ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+                  {copied ? "已複製" : "複製密鑰"}
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="ghost" size="sm" onClick={() => setCreated([])}>
+              我已保存
+            </Button>
           </div>
         )}
 
@@ -214,9 +249,10 @@ export function WebhooksSection() {
               <Input id="hook-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={50} placeholder="例如：筆記網站" disabled={creating} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="hook-url">接收網址（https）</Label>
-              <Input id="hook-url" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={500} placeholder="https://example.com/rag-hook" inputMode="url" disabled={creating} aria-invalid={!httpsOnly} />
-              {!httpsOnly && <p className="text-xs text-red-600">一律要使用 https://</p>}
+              <Label htmlFor="hook-url">接收網址（https，可填多個，用逗號隔開）</Label>
+              <Textarea id="hook-url" value={url} onChange={(e) => setUrl(e.target.value)} rows={2} placeholder="https://a.example.com/hook, https://b.example.com/hook" className="min-h-0 resize-none" disabled={creating} aria-invalid={!httpsOnly} />
+              {!httpsOnly && <p className="text-xs text-red-600">每個網址都要使用 https://</p>}
+              {urls.length > 1 && httpsOnly && <p className="text-xs text-muted-foreground">會建立 {urls.length} 個 Webhook，各有自己的密鑰與送出紀錄</p>}
             </div>
           </div>
           <fieldset className="space-y-2">
@@ -234,7 +270,7 @@ export function WebhooksSection() {
           </fieldset>
           <Button type="submit" disabled={!canCreate || creating}>
             {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-            建立 Webhook
+            {urls.length > 1 ? `建立 ${urls.length} 個 Webhook` : "建立 Webhook"}
           </Button>
         </form>
 

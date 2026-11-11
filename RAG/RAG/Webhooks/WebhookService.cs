@@ -28,7 +28,7 @@ namespace RAG.Webhooks
 
     public sealed class WebhookService : IWebhookService
     {
-        public const int MaxPerUser = 5;
+        public const int MaxPerUser = 20;
         public const int DeliveryListLimit = 50;
         public const string SecretPrefix = "whsec_";
 
