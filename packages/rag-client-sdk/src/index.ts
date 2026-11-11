@@ -30,6 +30,7 @@ export {
   type CreateApiTokenInput,
   type Draft,
   type DraftStatus,
+  type SearchScope,
   type CreateDraftInput,
   type UpdateDraftInput,
   type AcceptDraftInput,

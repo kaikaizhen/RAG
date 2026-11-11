@@ -35,6 +35,8 @@ export type CreateDraftInput = Schemas['CreateDraftParam'];
 export type UpdateDraftInput = Schemas['UpdateDraftParam'];
 export type AcceptDraftInput = Schemas['AcceptDraftParam'];
 export type DraftStatus = 'Pending' | 'Accepted' | 'Rejected';
+/** 檢索範圍：current = 只找目前的空間（預設）；all = 我所有可讀的空間。實際涵蓋哪些空間由伺服器依你的 membership 決定，client 不能指定空間編號 */
+export type SearchScope = 'current' | 'all';
 export type Webhook = Schemas['WebhookVM'];
 /** 建立 webhook 的回應：`secret` 簽章密鑰只會出現這一次 */
 export type CreatedWebhook = Schemas['CreateWebhookVM'];
@@ -129,16 +131,16 @@ export class RagClient {
 
   readonly knowledge = {
     /**
-     * 在目前 Space 的知識庫檢索（只檢索、不產生答案）。
+     * 在知識庫檢索（只檢索、不產生答案）；預設只找目前的 Space，scope: 'all' 則涵蓋你所有可讀的 Space（每筆結果標明所屬空間）。
      * status：grounded（有 Verified 證據）/ partial（僅 Stale、Inferred）/ insufficient（無證據）；similar 不可當作依據。
      */
-    search: (query: string, options: { type?: string } = {}) =>
-      this.request<KnowledgeSearchResult>('POST', '/Knowledge/search', { body: { query, type: options.type ?? null } }),
+    search: (query: string, options: { type?: string; scope?: SearchScope } = {}) =>
+      this.request<KnowledgeSearchResult>('POST', '/Knowledge/search', { body: { query, type: options.type ?? null, scope: options.scope ?? null } }),
   };
 
   readonly chat = {
-    send: (question: string, options: { chatId?: string; type?: string } = {}) =>
-      this.request<ChatAnswer>('POST', '/Chat', { body: { question, chatID: options.chatId ?? null, type: options.type ?? null } }),
+    send: (question: string, options: { chatId?: string; type?: string; scope?: SearchScope } = {}) =>
+      this.request<ChatAnswer>('POST', '/Chat', { body: { question, chatID: options.chatId ?? null, type: options.type ?? null, scope: options.scope ?? null } }),
     history: () => this.request<ChatSummary[]>('GET', '/Chat'),
     logs: (chatId: string) => this.request<ChatLogEntry[]>('GET', `/Chat/${encodeURIComponent(chatId)}`),
     delete: (chatId: string) => this.request<string>('DELETE', `/Chat/${encodeURIComponent(chatId)}`),
@@ -147,7 +149,7 @@ export class RagClient {
      * 之後 yield `text` 事件，串接即為完整答案。伺服器逐字送出 `data: <字元>`；空的 data 行代表換行字元。
      * 傳入 signal 可中止。
      */
-    stream: (question: string, options: { chatId?: string; type?: string; signal?: AbortSignal } = {}) =>
+    stream: (question: string, options: { chatId?: string; type?: string; scope?: SearchScope; signal?: AbortSignal } = {}) =>
       this.streamChat(question, options),
   };
 
@@ -360,9 +362,9 @@ export class RagClient {
     return response;
   }
 
-  private async *streamChat(question: string, options: { chatId?: string; type?: string; signal?: AbortSignal }): AsyncGenerator<ChatStreamEvent, void, void> {
+  private async *streamChat(question: string, options: { chatId?: string; type?: string; scope?: SearchScope; signal?: AbortSignal }): AsyncGenerator<ChatStreamEvent, void, void> {
     const response = await this.send('POST', '/Chat/ChatStream', {
-      body: { question, chatID: options.chatId ?? null, type: options.type ?? null },
+      body: { question, chatID: options.chatId ?? null, type: options.type ?? null, scope: options.scope ?? null },
       accept: 'text/event-stream',
       signal: options.signal,
     });

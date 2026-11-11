@@ -17,6 +17,12 @@ namespace RAG.Models.Dtos.RagServer
         public int? SharedSpaceId { get; set; }
 
         /// <summary>
+        /// 檢索涵蓋的 Space（僅由 RagGateway 依 RagScope 帶入，且只在涵蓋多個 Space 時才送）
+        /// </summary>
+        [JsonProperty("space_ids", NullValueHandling = NullValueHandling.Ignore)]
+        public List<int>? SpaceIds { get; set; }
+
+        /// <summary>
         /// 問題描述
         /// </summary>
         [JsonProperty("question")]

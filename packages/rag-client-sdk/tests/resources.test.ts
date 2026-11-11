@@ -200,6 +200,22 @@ describe('CRUD resources', () => {
     expect(server.requests[2]!.body).toMatchObject({ isActive: false });
   });
 
+  it('scope 一併送給 chat 與 knowledge.search；沒指定時送 null（伺服器預設只找目前空間）', async () => {
+    const server = fakeServer({
+      'POST /api/v1/Chat': () => ({ status: 200, body: { answer: 'a', related: [], chatID: '1' } }),
+      'POST /api/v1/Knowledge/search': () => ({ status: 200, body: { status: 'insufficient', evidence: [], similar: [] } }),
+    });
+    const client = await signedIn(server.fetch);
+
+    await client.chat.send('q', { scope: 'all' });
+    await client.chat.send('q');
+    await client.knowledge.search('q', { scope: 'all' });
+
+    expect(server.requests[0]!.body).toMatchObject({ question: 'q', scope: 'all' });
+    expect(server.requests[1]!.body).toMatchObject({ scope: null });
+    expect(server.requests[2]!.body).toMatchObject({ query: 'q', scope: 'all' });
+  });
+
   it('register / verifyEmail 不需登入，不帶 Authorization', async () => {
     const ok = () => ({ status: 200, body: { status: 'pending', message: 'ok' } });
     const server = fakeServer({ 'POST /api/v1/Auth/Register': ok, 'POST /api/v1/Auth/VerifyEmail': ok });

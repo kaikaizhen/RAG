@@ -1,5 +1,6 @@
 using AutoMapper;
 using Library.Http;
+using RAG.Context;
 using RAG.Models.Dtos.Chat;
 using RAG.Models.Dtos.RagServer;
 using RAG.Models.Entities;
@@ -19,6 +20,7 @@ namespace RAG.Services
         private readonly ISpaceContextAccessor _spaceContext;
         private readonly IRagScopeFactory _ragScopeFactory;
         private readonly IRagGateway _ragGateway;
+        private readonly ISearchScopeResolver _scopeResolver;
 
         public ChatService(
             IMapper mapper,
@@ -26,7 +28,8 @@ namespace RAG.Services
             IChatLogRepo chatLogRepo,
             ISpaceContextAccessor spaceContext,
             IRagScopeFactory ragScopeFactory,
-            IRagGateway ragGateway
+            IRagGateway ragGateway,
+            ISearchScopeResolver scopeResolver
         )
         {
             _mapper = mapper;
@@ -35,6 +38,7 @@ namespace RAG.Services
             _spaceContext = spaceContext;
             _ragScopeFactory = ragScopeFactory;
             _ragGateway = ragGateway;
+            _scopeResolver = scopeResolver;
         }
 
         public async Task<ChatReponseDto> SendChatAsync(ChatDto dto)
@@ -52,8 +56,10 @@ namespace RAG.Services
                 existingChat = await _chatRepo.GetByIdAsync(chatId, userId, spaceId) ?? throw new HttpException(HttpStatusCode.NotFound, "ChatID Not Found");
             }
 
-            // 只搜尋目前 Space 的知識
-            var chat = await _ragGateway.AskAsync(_ragScopeFactory.Create(context), dto.Question, dto.Type);
+            // 預設只搜尋目前 Space 的知識；scope=all 時涵蓋你所有可讀的 Space（範圍由伺服器依 membership 決定）。
+            // 對話本身一律屬於目前的 Space
+            var searched = await _scopeResolver.ResolveAsync(context, dto.Scope);
+            var chat = await _ragGateway.AskAsync(_ragScopeFactory.CreateForSearch(context, searched.SpaceIds), dto.Question, dto.Type);
 
             ChatHeader chatEntity;
             if (existingChat is null)

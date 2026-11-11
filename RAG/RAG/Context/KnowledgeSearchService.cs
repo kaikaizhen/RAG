@@ -26,13 +26,17 @@ namespace RAG.Context
         public const string Insufficient = "insufficient";
     }
 
-    public sealed record KnowledgeItem(int QuestionId, string Question, string Answer, double Score, string Status);
+    public sealed record KnowledgeItem(int QuestionId, string Question, string Answer, double Score, string Status, int SpaceId = 0, string SpaceKey = "");
 
-    public sealed record KnowledgeSearchResult(int SpaceId, string SpaceKey, string Status, IReadOnlyList<KnowledgeItem> Evidence, IReadOnlyList<KnowledgeItem> Similar);
+    public sealed record KnowledgeSearchResult(int SpaceId, string SpaceKey, string Status, IReadOnlyList<KnowledgeItem> Evidence, IReadOnlyList<KnowledgeItem> Similar, string Scope = SearchScopes.Current, IReadOnlyList<int>? SearchedSpaceIds = null);
 
     public interface IKnowledgeSearchService
     {
-        Task<KnowledgeSearchResult> SearchAsync(SpaceExecutionContext context, string query, string? type, CancellationToken cancellationToken = default);
+        Task<KnowledgeSearchResult> SearchAsync(SpaceExecutionContext context, string query, string? type, CancellationToken cancellationToken = default) =>
+            SearchAsync(context, query, type, scope: null, cancellationToken);
+
+        /// <param name="scope">current（預設）或 all（我所有可讀的 Space）；實際範圍由伺服器依 membership 決定</param>
+        Task<KnowledgeSearchResult> SearchAsync(SpaceExecutionContext context, string query, string? type, string? scope, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -42,33 +46,38 @@ namespace RAG.Context
     {
         private readonly IRagGateway _ragGateway;
         private readonly IRagScopeFactory _ragScopeFactory;
+        private readonly ISearchScopeResolver _scopeResolver;
         private readonly IQuestionsRepo _questionsRepo;
         private readonly ContextRuntimeOptions _options;
         private readonly ILogger<KnowledgeSearchService> _logger;
 
-        public KnowledgeSearchService(IRagGateway ragGateway, IRagScopeFactory ragScopeFactory, IQuestionsRepo questionsRepo, ContextRuntimeOptions options, ILogger<KnowledgeSearchService> logger)
+        public KnowledgeSearchService(IRagGateway ragGateway, IRagScopeFactory ragScopeFactory, ISearchScopeResolver scopeResolver, IQuestionsRepo questionsRepo, ContextRuntimeOptions options, ILogger<KnowledgeSearchService> logger)
         {
             _ragGateway = ragGateway;
             _ragScopeFactory = ragScopeFactory;
+            _scopeResolver = scopeResolver;
             _questionsRepo = questionsRepo;
             _options = options;
             _logger = logger;
         }
 
-        public async Task<KnowledgeSearchResult> SearchAsync(SpaceExecutionContext context, string query, string? type, CancellationToken cancellationToken = default)
+        public async Task<KnowledgeSearchResult> SearchAsync(SpaceExecutionContext context, string query, string? type, string? scope, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(context);
             if (!context.Space.HasPermission(SpacePermissions.KnowledgeRead)) throw new HttpException(HttpStatusCode.Forbidden, "Forbidden");
             if (string.IsNullOrWhiteSpace(query) || query.Length > 2000) throw new HttpException(HttpStatusCode.BadRequest, "query must be 1-2000 characters");
 
             var spaceId = context.Space.SpaceId;
-            var hits = await _ragGateway.SearchAsync(_ragScopeFactory.Create(context), query, _options.SearchLimit, type, cancellationToken);
+            var searched = await _scopeResolver.ResolveAsync(context, scope, cancellationToken);
+            var hits = await _ragGateway.SearchAsync(_ragScopeFactory.CreateForSearch(context, searched.SpaceIds), query, _options.SearchLimit, type, cancellationToken);
+            var spaces = searched.Spaces.ToDictionary(s => s.SpaceId);
 
             var candidates = hits
                 .Select(h => (Hit: h, Id: int.TryParse(h.ReferenceId, NumberStyles.None, CultureInfo.InvariantCulture, out var id) ? id : 0))
                 .Where(x => x.Id > 0)
                 .ToList();
-            var records = (await _questionsRepo.GetByIdsInSpaceAsync(candidates.Select(c => c.Id), spaceId)).ToDictionary(r => r.ID);
+            // 回查只限這次涵蓋的 Space：即使 RAG Server 回了範圍外的命中，也在這裡被擋掉（授權以 MySQL 與 membership 為準）
+            var records = (await _questionsRepo.GetByIdsInSpacesAsync(candidates.Select(c => c.Id), searched.SpaceIds)).ToDictionary(r => r.ID);
 
             // 孤兒向量、其他 Space 的紀錄、Superseded 一律不回傳；內容以 MySQL 為準
             var seen = new HashSet<int>();
@@ -83,7 +92,7 @@ namespace RAG.Context
             var similar = new List<KnowledgeItem>();
             foreach (var (hit, record) in eligible)
             {
-                var item = new KnowledgeItem(record.ID, record.Question ?? string.Empty, record.Answer ?? string.Empty, hit.Score, record.Status);
+                var item = new KnowledgeItem(record.ID, record.Question ?? string.Empty, record.Answer ?? string.Empty, hit.Score, record.Status, record.SpaceID, spaces[record.SpaceID].SpaceKey);
                 if (hit.Score >= _options.EvidenceScoreThreshold && hit.Score >= topScore - _options.EvidenceRelativeMargin)
                 {
                     if (evidence.Count < _options.MaxEvidence) evidence.Add(item);
@@ -99,10 +108,10 @@ namespace RAG.Context
                 : KnowledgeSearchStatus.Insufficient;
 
             // 稽核只記錄識別與統計，不記錄查詢內容與知識原文
-            _logger.LogInformation("ContextAudit knowledge.search user={UserId} space={SpaceId} status={Status} evidence={EvidenceIds} similar={SimilarIds} candidates={Candidates}",
-                context.Space.UserId, spaceId, status, string.Join(',', evidence.Select(e => e.QuestionId)), string.Join(',', similar.Select(s => s.QuestionId)), hits.Count);
+            _logger.LogInformation("ContextAudit knowledge.search user={UserId} space={SpaceId} scope={Scope} spaces={SpaceIds} status={Status} evidence={EvidenceIds} similar={SimilarIds} candidates={Candidates}",
+                context.Space.UserId, spaceId, searched.Scope, string.Join(',', searched.SpaceIds), status, string.Join(',', evidence.Select(e => e.QuestionId)), string.Join(',', similar.Select(s => s.QuestionId)), hits.Count);
 
-            return new KnowledgeSearchResult(spaceId, context.Space.SpaceKey, status, evidence, similar);
+            return new KnowledgeSearchResult(spaceId, context.Space.SpaceKey, status, evidence, similar, searched.Scope, searched.SpaceIds);
         }
     }
 }

@@ -43,7 +43,7 @@ namespace RAG.Rag
             ArgumentNullException.ThrowIfNull(scope);
 
             var sharedSpaceId = _ragOption.PublicSpaceId > 0 && _ragOption.PublicSpaceId != scope.SpaceId ? _ragOption.PublicSpaceId : (int?)null;
-            var content = new SendChatDto { SpaceId = scope.SpaceId, SharedSpaceId = sharedSpaceId, Question = question, Type = type };
+            var content = new SendChatDto { SpaceId = scope.SpaceId, SpaceIds = SearchSpaces(scope), SharedSpaceId = sharedSpaceId, Question = question, Type = type };
 
             using var response = await SendAsync(HttpMethod.Post, $"{_ragOption.BaseUrl}{_ragOption.AskUrl}", content, cancellationToken);
             // RAG Server 以 400 表示「沒有足夠可靠的相關內容」（低於門檻或查無資料），屬正常的查無結果，不是伺服器錯誤
@@ -58,7 +58,7 @@ namespace RAG.Rag
         {
             ArgumentNullException.ThrowIfNull(scope);
 
-            var content = new { space_id = scope.SpaceId, query, limit, type };
+            var content = new { space_id = scope.SpaceId, space_ids = SearchSpaces(scope), query, limit, type };
 
             using var response = await SendAsync(HttpMethod.Post, $"{_ragOption.BaseUrl}{_ragOption.SearchUrl}", content, cancellationToken);
             if (!response.IsSuccessStatusCode) throw new HttpException(HttpStatusCode.InternalServerError, "Search API Error");
@@ -81,6 +81,9 @@ namespace RAG.Rag
                 throw new HttpException(HttpStatusCode.InternalServerError, "DeleteVector API Error");
             }
         }
+
+        /// <summary>只有涵蓋多個 Space 時才送 space_ids；單一 Space 維持原本的請求內容</summary>
+        private static List<int>? SearchSpaces(RagScope scope) => scope.SearchSpaceIds.Count > 1 ? scope.SearchSpaceIds.ToList() : null;
 
         private Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, object? body, CancellationToken cancellationToken)
         {

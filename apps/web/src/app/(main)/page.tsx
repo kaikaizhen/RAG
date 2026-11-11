@@ -31,6 +31,21 @@ interface Message {
 /** 不指定種類 = 搜尋目前 Space 的全部知識 */
 const ALL_TYPES = "all"
 
+/**
+ * 檢索的空間範圍：current = 只找目前的空間；all = 我所有可讀的空間。
+ * 這裡只是「選哪一種」，實際涵蓋哪些空間由伺服器依你的 membership 決定。記在這個瀏覽器，下次開啟沿用。
+ */
+type SpaceScope = "current" | "all"
+const SCOPE_KEY = "rag.searchScope"
+
+function readStoredScope(): SpaceScope {
+  try {
+    return window.localStorage.getItem(SCOPE_KEY) === "all" ? "all" : "current"
+  } catch {
+    return "current"
+  }
+}
+
 export default function MainPage() {
   const [userName, setUserName] = React.useState<string>("使用者")
   const [greeting, setGreeting] = React.useState<string>("早安")
@@ -41,6 +56,8 @@ export default function MainPage() {
   const [currentChatId, setCurrentChatId] = React.useState<string>("")
   const [currentTypeId, setCurrentTypeId] = React.useState<string>(ALL_TYPES)
   const [qaTypes, setQaTypes] = React.useState<QaType[]>([])
+  const [spaceScope, setSpaceScopeState] = React.useState<SpaceScope>("current")
+  const [hasManySpaces, setHasManySpaces] = React.useState<boolean>(false)
   const [isMobile, setIsMobile] = React.useState<boolean>(false)
   const abortControllerRef = React.useRef<AbortController | null>(null)
   // handleSubmit 內需要最新的 chatId，但不希望每次變動都重建 listener
@@ -151,6 +168,10 @@ export default function MainPage() {
 
     loadQaTypes()
 
+    // 只有加入多個空間時才需要「所有空間」選項
+    setSpaceScopeState(readStoredScope())
+    getClient().spaces.list().then((list) => setHasManySpaces(list.length > 1)).catch(() => setHasManySpaces(false))
+
     // 監聽 sidebar 事件
     const handleStartNewChat = () => {
       startNewChat()
@@ -187,6 +208,15 @@ export default function MainPage() {
     }
   }, [loadQaTypes, loadChat, startNewChat])
 
+  const setSpaceScope = React.useCallback((scope: SpaceScope) => {
+    setSpaceScopeState(scope)
+    try {
+      window.localStorage.setItem(SCOPE_KEY, scope)
+    } catch {
+      /* 無痕模式或被封鎖時只保留在這次的畫面上 */
+    }
+  }, [])
+
   const updateLastMessage = (updater: (previous: Message) => Message) => {
     setMessages(prev => {
       if (prev.length === 0) return prev
@@ -215,6 +245,7 @@ export default function MainPage() {
       const stream = getClient().chat.stream(userMessage, {
         chatId: currentChatIdRef.current || undefined,
         type: currentTypeId === ALL_TYPES ? undefined : currentTypeId,
+        scope: hasManySpaces && spaceScope === "all" ? "all" : "current",
         signal: controller.signal,
       })
       for await (const event of stream) {
@@ -239,7 +270,7 @@ export default function MainPage() {
       setIsStreaming(false)
       abortControllerRef.current = null
     }
-  }, [message, isStreaming, currentTypeId])
+  }, [message, isStreaming, currentTypeId, spaceScope, hasManySpaces])
 
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // 輸入法（注音、拼音等）組字或選字時按 Enter 是「確認選字」，不是送出；
@@ -284,11 +315,21 @@ export default function MainPage() {
               title={`檢索範圍：${currentTypeName}`}
             >
               <SlidersHorizontal className="h-5 w-5" />
-              {currentTypeId !== ALL_TYPES && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />}
+              {(currentTypeId !== ALL_TYPES || (hasManySpaces && spaceScope === "all")) && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="min-w-48">
-            <DropdownMenuLabel>檢索範圍</DropdownMenuLabel>
+            {hasManySpaces && (
+              <>
+                <DropdownMenuLabel>空間</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={spaceScope} onValueChange={(value) => setSpaceScope(value as SpaceScope)}>
+                  <DropdownMenuRadioItem value="current">目前的空間</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="all">我所有的空間</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuLabel>種類</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuRadioGroup value={currentTypeId} onValueChange={setCurrentTypeId}>
               <DropdownMenuRadioItem value={ALL_TYPES}>全部種類</DropdownMenuRadioItem>
@@ -342,7 +383,7 @@ export default function MainPage() {
         按 Enter 發送訊息，Shift + Enter 換行
       </p>
     </form>
-  ), [message, isStreaming, isMobile, handleSubmit, handleKeyDown, currentTypeId, currentTypeName, qaTypes])
+  ), [message, isStreaming, isMobile, handleSubmit, handleKeyDown, currentTypeId, currentTypeName, qaTypes, hasManySpaces, spaceScope, setSpaceScope])
 
   return (
     <div className="flex h-dvh w-full flex-col">

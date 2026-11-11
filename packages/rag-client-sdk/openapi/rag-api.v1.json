@@ -2764,6 +2764,13 @@
           },
           "status": {
             "type": "string"
+          },
+          "spaceID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "spaceKey": {
+            "type": "string"
           }
         }
       },
@@ -2781,6 +2788,12 @@
               "null",
               "string"
             ]
+          },
+          "scope": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2793,6 +2806,16 @@
           },
           "spaceKey": {
             "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "searchedSpaceIDs": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
           },
           "status": {
             "type": "string"
@@ -2969,6 +2992,12 @@
             "type": "string"
           },
           "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scope": {
             "type": [
               "null",
               "string"

@@ -8,6 +8,7 @@ namespace RAG.Context
             options.Validate();
 
             services.AddSingleton(options);
+            services.AddScoped<ISearchScopeResolver, SearchScopeResolver>();
             services.AddScoped<IKnowledgeSearchService, KnowledgeSearchService>();
 
             return services;

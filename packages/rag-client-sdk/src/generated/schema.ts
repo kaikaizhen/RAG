@@ -1983,15 +1983,21 @@ export interface components {
             /** Format: double */
             score?: number;
             status?: string;
+            /** Format: int32 */
+            spaceID?: number;
+            spaceKey?: string;
         };
         KnowledgeSearchParam: {
             query: string;
             type?: null | string;
+            scope?: null | string;
         };
         KnowledgeSearchVM: {
             /** Format: int32 */
             spaceID?: number;
             spaceKey?: string;
+            scope?: string;
+            searchedSpaceIDs?: number[];
             status?: string;
             evidence?: components["schemas"]["KnowledgeItemVM"][];
             similar?: components["schemas"]["KnowledgeItemVM"][];
@@ -2041,6 +2047,7 @@ export interface components {
         SendChatParam: {
             question: string;
             type?: null | string;
+            scope?: null | string;
             chatID?: null | string;
         };
         SkillBundleVM: {

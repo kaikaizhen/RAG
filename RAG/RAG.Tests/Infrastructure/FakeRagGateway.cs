@@ -10,7 +10,7 @@ namespace RAG.Tests.Infrastructure
     /// </summary>
     public class FakeRagGateway : IRagGateway
     {
-        public sealed record Call(string Operation, int SpaceId, string? VectorId, ToVectorDto.QuestionRequest? Question, string? AskQuestion);
+        public sealed record Call(string Operation, int SpaceId, string? VectorId, ToVectorDto.QuestionRequest? Question, string? AskQuestion, IReadOnlyList<int>? SearchSpaceIds = null);
 
         public ConcurrentQueue<Call> Calls { get; } = new();
 
@@ -28,6 +28,11 @@ namespace RAG.Tests.Infrastructure
         /// </summary>
         public ConcurrentDictionary<int, List<RagSearchHit>> SearchHits { get; } = new();
 
+        /// <summary>
+        /// 不論 scope 為何都會混進搜尋結果的 Space（模擬 RAG Server 回了範圍外的命中，驗證 API 端會擋掉）
+        /// </summary>
+        public List<int> LeakedSpaceIds { get; } = new();
+
         public void Reset()
         {
             Calls.Clear();
@@ -35,6 +40,7 @@ namespace RAG.Tests.Infrastructure
             FailDelete = false;
             AnswerOverride = null;
             SearchHits.Clear();
+            LeakedSpaceIds.Clear();
         }
 
         public Task<string> UpsertQuestionAsync(RagScope scope, ToVectorDto.QuestionRequest question, CancellationToken cancellationToken = default)
@@ -47,14 +53,18 @@ namespace RAG.Tests.Infrastructure
 
         public Task<ChatReponseDto> AskAsync(RagScope scope, string question, string? type, CancellationToken cancellationToken = default)
         {
-            Calls.Enqueue(new Call("ask", scope.SpaceId, null, null, question));
+            Calls.Enqueue(new Call("ask", scope.SpaceId, null, null, question, scope.SearchSpaceIds));
             return Task.FromResult(new ChatReponseDto { Answer = AnswerOverride ?? $"answer-from-space-{scope.SpaceId}", Related = new List<string> { "related" } });
         }
 
         public Task<IReadOnlyList<RagSearchHit>> SearchAsync(RagScope scope, string query, int limit, string? type, CancellationToken cancellationToken = default)
         {
-            Calls.Enqueue(new Call("search", scope.SpaceId, null, null, query));
-            IReadOnlyList<RagSearchHit> hits = SearchHits.TryGetValue(scope.SpaceId, out var list) ? list.Take(limit).ToList() : new List<RagSearchHit>();
+            Calls.Enqueue(new Call("search", scope.SpaceId, null, null, query, scope.SearchSpaceIds));
+            IReadOnlyList<RagSearchHit> hits = scope.SearchSpaceIds.Concat(LeakedSpaceIds).Distinct()
+                .SelectMany(id => SearchHits.TryGetValue(id, out var list) ? list : new List<RagSearchHit>())
+                .OrderByDescending(h => h.Score)
+                .Take(limit)
+                .ToList();
             return Task.FromResult(hits);
         }
 

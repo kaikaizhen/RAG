@@ -25,6 +25,7 @@ curl -s -X POST "${baseUrl}/api/v1/Knowledge/search" \\
   -d '{"query":"<問題>"}'
 \`\`\`
 
+- 預設只找目前的空間；要涵蓋我所有可讀的空間，body 加上 \`"scope":"all"\`（每筆結果會標明所屬空間 spaceKey）。可以搜尋哪些空間由伺服器依我的權限決定，不能自己指定空間編號。
 - status 為 Grounded 才能當依據回答；Insufficient 時不要編造，直接告訴我知識庫裡沒有。
 - evidence 裡 status 為 Stale / Inferred 的內容可信度較低，回答時要註明。
 

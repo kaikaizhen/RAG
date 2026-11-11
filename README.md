@@ -275,6 +275,7 @@ docker run -d -p 8007:8007 -e QDRANT_HOST=<qdrant-host> -e QDRANT_PORT=6333 --na
 - **應用程式權杖**（`rag_pat_…`）：只能搜尋知識庫、查詢空間、把問答放進暫存區；**不能直接寫入或刪除知識**，也不能管理權杖與 webhook。只存雜湊，明文只顯示一次，可限定空間、設有效期限、隨時撤銷。
 - **暫存區**：草稿不進向量資料庫；本人在前端審查、可編輯，接受後才寫入知識庫（預設狀態 `Inferred`）。重複送出或連點只會產生一筆。
 - **Webhook**：草稿被建立 / 接受 / 拒絕時，伺服器以簽章的 **HTTPS** 請求通知使用者的網址。網址必須是公開網路上的 https（不接受 `http://`、localhost、內網與雲端中繼位址；送出時再驗證解析出的 IP，防 DNS 重綁）。請求帶 `X-RAG-Signature`（HMAC-SHA256）與時間戳，失敗依 1 分 / 5 分 / 30 分 / 2 小時 / 12 小時退避重試（共 6 次），用完標記 Dead，可手動重送；連續 5 筆都送不出去會自動停用。
+- **檢索範圍**：聊天與 `/Knowledge/search` 預設只找目前的空間；帶 `scope: "all"` 則涵蓋你所有可讀的空間（角色有 `knowledge.read`、membership 與空間都啟用；限定空間的權杖再取交集），每筆結果標明所屬空間。範圍由伺服器依 membership 決定，client 只能選「current / all」，不能指定空間編號；回查資料庫時再限制一次，即使向量服務回了範圍外的命中也會被擋掉。寫入一律只進目前的空間。
 - 管理頁面在前端「開發者」，審查在「暫存區」；Postman 檔案見 `RAG/docs/`。
 
 **上線順序**：備份 → 執行 `RAG/RAG/Migrations/Scripts/20261108-api-tokens-and-inbox.sql` 與 `20261108-webhooks.sql` → 部署新版 API 與前端。順序反了，API 啟動後查不到新表會出錯。

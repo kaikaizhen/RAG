@@ -808,7 +808,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"string\",\n  \"type\": null\n}",
+              "raw": "{\n  \"query\": \"string\",\n  \"type\": null,\n  \"scope\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"

@@ -46,12 +46,14 @@ namespace RAG.Controllers
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Search([FromBody] KnowledgeSearchParam request)
         {
-            var result = await _knowledgeSearch.SearchAsync(_spaceContextAccessor.Current, request.Query, request.Type, HttpContext.RequestAborted);
+            var result = await _knowledgeSearch.SearchAsync(_spaceContextAccessor.Current, request.Query, request.Type, request.Scope, HttpContext.RequestAborted);
 
             return Ok(new KnowledgeSearchVM
             {
                 SpaceID = result.SpaceId,
                 SpaceKey = result.SpaceKey,
+                Scope = result.Scope,
+                SearchedSpaceIDs = (result.SearchedSpaceIds ?? new[] { result.SpaceId }).ToList(),
                 Status = result.Status,
                 Evidence = result.Evidence.Select(ToVM).ToList(),
                 Similar = result.Similar.Select(ToVM).ToList(),
@@ -65,7 +67,9 @@ namespace RAG.Controllers
             Question = item.Question,
             Answer = item.Answer,
             Score = Math.Round(item.Score, 4),
-            Status = item.Status
+            Status = item.Status,
+            SpaceID = item.SpaceId,
+            SpaceKey = item.SpaceKey
         };
     }
 }

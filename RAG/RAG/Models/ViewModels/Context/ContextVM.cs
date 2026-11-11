@@ -11,6 +11,11 @@ namespace RAG.Models.ViewModels.Context
         /// 問題種類編號（選填，限縮搜尋範圍）
         /// </summary>
         public string? Type { get; set; }
+
+        /// <summary>
+        /// 檢索範圍：current（只找目前的空間，預設）或 all（我所有可讀的空間）。實際範圍由伺服器依你的 membership 決定
+        /// </summary>
+        public string? Scope { get; set; }
     }
 
     public class KnowledgeSearchVM
@@ -24,6 +29,16 @@ namespace RAG.Models.ViewModels.Context
         /// Space 識別字
         /// </summary>
         public string SpaceKey { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 這次檢索的範圍：current 或 all
+        /// </summary>
+        public string Scope { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 這次實際涵蓋的 Space 編號（scope 為 all 時可能不只一個）
+        /// </summary>
+        public List<int> SearchedSpaceIDs { get; set; } = new();
 
         /// <summary>
         /// grounded：有 Verified 證據；partial：只有 Stale / Inferred 證據；insufficient：沒有證據
@@ -72,6 +87,16 @@ namespace RAG.Models.ViewModels.Context
         /// 知識狀態：Verified / Stale / Inferred
         /// </summary>
         public string Status { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 這筆知識所屬的 Space 編號
+        /// </summary>
+        public int SpaceID { get; set; }
+
+        /// <summary>
+        /// 這筆知識所屬的 Space 識別字
+        /// </summary>
+        public string SpaceKey { get; set; } = string.Empty;
     }
 
     public class SkillBundleVM

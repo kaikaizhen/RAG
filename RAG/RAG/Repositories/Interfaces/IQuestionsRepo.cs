@@ -40,6 +40,11 @@ namespace RAG.Repositories.Interfaces
         Task<List<Questions>> GetByIdsInSpaceAsync(IEnumerable<int> ids, int spaceId);
 
         /// <summary>
+        /// 取得多個 Space 內的問題（跨 Space 檢索後回查；只回傳屬於這些 Space 的紀錄，其餘一律不回）
+        /// </summary>
+        Task<List<Questions>> GetByIdsInSpacesAsync(IEnumerable<int> ids, IReadOnlyCollection<int> spaceIds);
+
+        /// <summary>
         /// 是否有任何 Space 的問題使用這些問題種類細項（用於阻止跨 Space 連帶刪除）
         /// </summary>
         /// <param name="qaItemTypeIds"></param>

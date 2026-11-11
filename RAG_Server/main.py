@@ -198,16 +198,45 @@ class QuestionListRequest(CaseInsensitiveModel):
     questions: List[QuestionRequest]
 
 
+MAX_SEARCH_SPACES = 50
+
+
+def positive_space_ids(value: Optional[List[int]]) -> Optional[List[int]]:
+    if value is not None and any(i <= 0 for i in value):
+        raise ValueError("space_ids must be positive integers")
+    return value
+
+
+def search_space_ids(space_id: int, space_ids: Optional[List[int]]) -> List[int]:
+    """檢索涵蓋的 Space：永遠包含主要的 space_id；沒有額外指定時就是只有它自己"""
+    return sorted({space_id, *(space_ids or [])})
+
+
 class AskRequest(CaseInsensitiveModel):
     space_id: int = Field(gt=0)
+    # 檢索涵蓋的 Space（由 .NET 依 membership 算出；只影響讀取）。沒帶就只找 space_id
+    space_ids: Optional[List[int]] = Field(default=None, max_length=MAX_SEARCH_SPACES)
     # 公開知識的 Space：自己的 Space 答不出來才查。由 .NET 依伺服器設定帶入，使用者無法指定
     shared_space_id: Optional[int] = Field(default=None, gt=0)
+
+    @field_validator("space_ids")
+    @classmethod
+    def _positive_space_ids(cls, value):
+        return positive_space_ids(value)
+
     question: str
     type: Optional[str] = None
 
 
 class SearchRequest(CaseInsensitiveModel):
     space_id: int = Field(gt=0)
+    space_ids: Optional[List[int]] = Field(default=None, max_length=MAX_SEARCH_SPACES)
+
+    @field_validator("space_ids")
+    @classmethod
+    def _positive_space_ids(cls, value):
+        return positive_space_ids(value)
+
     query: str = Field(min_length=1, max_length=2000)
     limit: int = Field(default=10, ge=1, le=50)
     type: Optional[str] = None
@@ -300,6 +329,15 @@ def space_filter(space_id: int, *conditions) -> models.Filter:
     """所有讀寫刪都必須帶的 Space 範圍條件"""
     return models.Filter(
         must=[models.FieldCondition(key=SPACE_ID_KEY, match=models.MatchValue(value=space_id)), *conditions]
+    )
+
+
+def spaces_filter(space_ids: List[int], *conditions) -> models.Filter:
+    """讀取用：涵蓋多個 Space。只有一個時與 space_filter 完全相同（不改變原本的查詢）"""
+    if len(space_ids) == 1:
+        return space_filter(space_ids[0], *conditions)
+    return models.Filter(
+        must=[models.FieldCondition(key=SPACE_ID_KEY, match=models.MatchAny(any=space_ids)), *conditions]
     )
 
 
@@ -414,21 +452,21 @@ def generate_answer(request: AskRequest):
     if request.type:
         extra.append(models.FieldCondition(key="type", match=models.MatchValue(value=request.type)))
 
-    def search_space(space_id: int):
+    def search_spaces(space_ids: List[int]):
         return client.search(
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
             limit=3,
             with_payload=True,
-            query_filter=space_filter(space_id, *extra)
+            query_filter=spaces_filter(space_ids, *extra)
         )
 
-    results = search_space(request.space_id)
+    results = search_spaces(search_space_ids(request.space_id, request.space_ids))
 
     # 自己的筆記優先；答不出來才看公開知識，分數一樣要過門檻
     from_shared = False
     if request.shared_space_id and (not results or results[0].score < SIMILAR_SCORE_THRESHOLD):
-        shared = search_space(request.shared_space_id)
+        shared = search_spaces([request.shared_space_id])
         if shared and shared[0].score >= SIMILAR_SCORE_THRESHOLD:
             results = shared
             from_shared = True
@@ -496,7 +534,7 @@ def search_knowledge(request: SearchRequest):
         query_vector=embed_text(request.query),
         limit=request.limit,
         with_payload=True,
-        query_filter=space_filter(request.space_id, *extra)
+        query_filter=spaces_filter(search_space_ids(request.space_id, request.space_ids), *extra)
     )
 
     return {
