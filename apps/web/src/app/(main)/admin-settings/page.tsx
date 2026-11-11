@@ -8,11 +8,27 @@ import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from "lucide-react"
 import { AddQAForm, QaType, QaTypeItem } from "./AddQAForm"
 import { QAList, QAPair } from "./QAList"
 import { canWriteKnowledge, describeError, getClient } from "@/lib/rag"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { MobileAdmin } from "./MobileAdmin"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const itemName = (item: ApiQaTypeItem) => item.nameZh || item.nameEn || item.nameOther || `細項 ${item.id}`
 
 export default function AdminSettingsPage() {
   const router = useRouter()
+  const isMobile = useIsMobile()
+  // 手機版：新增 / 編輯在全螢幕面板裡進行
+  const [sheetOpen, setSheetOpen] = React.useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null)
   const [allowed, setAllowed] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [loadingQAs, setLoadingQAs] = React.useState(false)
@@ -163,6 +179,7 @@ export default function AdminSettingsPage() {
       }
       await loadQAPairs()
       resetForm()
+      setSheetOpen(false)
       showMessage("success", isEditing ? "Q&A 已成功更新" : "Q&A 已成功新增")
     } catch (error) {
       showMessage("error", `${isEditing ? "更新" : "新增"}失敗: ${describeError(error)}`)
@@ -180,20 +197,18 @@ export default function AdminSettingsPage() {
     setCurrentType(item ? String(item.qaTypeID) : "")
     setCurrentTypeItem(qa.type)
     setCurrentStatus(qa.status ?? "Verified")
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (isMobile) setSheetOpen(true)
+    else window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // 刪除 Q&A
   const handleDeleteQA = async (id: string) => {
-    if (!confirm("確定要刪除此 Q&A 嗎？")) {
-      return
-    }
-
     try {
       await getClient().questions.delete(parseInt(id))
       await loadQAPairs()
       // 如果正在編輯被刪除的項目，清空表單
       if (editingId === id) resetForm()
+      setSheetOpen(false)
       showMessage("success", "Q&A 已刪除")
     } catch (error) {
       showMessage("error", `刪除失敗: ${describeError(error)}`)
@@ -224,6 +239,94 @@ export default function AdminSettingsPage() {
 
   if (!allowed) {
     return null
+  }
+
+  const renderForm = (chromeless: boolean) => (
+    <AddQAForm
+      currentQuestion={currentQuestion}
+      setCurrentQuestion={setCurrentQuestion}
+      currentAnswer={currentAnswer}
+      setCurrentAnswer={setCurrentAnswer}
+      currentType={currentType}
+      setCurrentType={setCurrentType}
+      currentTypeItem={currentTypeItem}
+      setCurrentTypeItem={setCurrentTypeItem}
+      currentStatus={currentStatus}
+      setCurrentStatus={setCurrentStatus}
+      submitting={submitting}
+      onSubmit={handleAddQA}
+      qaTypes={qaTypes}
+      qaTypeItems={qaTypeItems}
+      loadingTypes={loadingTypes}
+      loadingTypeItems={false}
+      editingId={editingId}
+      onCancelEdit={resetForm}
+      onTypeChange={handleTypeChange}
+      chromeless={chromeless}
+    />
+  )
+
+  const deleteDialog = (
+    <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => !open && setPendingDeleteId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>刪除這則問答？</AlertDialogTitle>
+          <AlertDialogDescription>刪除後不會再被檢索到，無法復原。</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>取消</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              const id = pendingDeleteId
+              setPendingDeleteId(null)
+              if (id) void handleDeleteQA(id)
+            }}
+          >
+            刪除
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+
+  if (isMobile) {
+    return (
+      <div className="flex h-full flex-col">
+        {message && (
+          <div
+            role="status"
+            className={`fixed inset-x-4 top-4 z-[60] flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${message.type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}
+          >
+            {message.type === "success" ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
+            <span>{message.text}</span>
+          </div>
+        )}
+        <MobileAdmin
+          qaPairs={qaPairs}
+          loading={loadingQAs || loadingTypes}
+          getTypeName={getTypeItemName}
+          stats={`類型 ${qaTypes.length}・細項 ${allItems.length}・問答 ${qaPairs.length}`}
+          onRefresh={handleRefresh}
+          onNew={() => {
+            resetForm()
+            setSheetOpen(true)
+          }}
+          onEdit={handleEditQA}
+          sheetOpen={sheetOpen}
+          isEditing={editingId !== null}
+          submitting={submitting}
+          canSubmit={!loadingTypes && !!currentTypeItem && !!currentQuestion.trim() && !!currentAnswer.trim()}
+          onSubmit={handleAddQA}
+          onCloseSheet={() => {
+            resetForm()
+            setSheetOpen(false)
+          }}
+          onDeleteEditing={() => editingId && setPendingDeleteId(editingId)}
+          form={renderForm(true)}
+        />
+        {deleteDialog}
+      </div>
+    )
   }
 
   return (
@@ -274,37 +377,18 @@ export default function AdminSettingsPage() {
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:overflow-hidden">
         <div className="grid gap-6 lg:h-full lg:grid-cols-2">
-          <AddQAForm
-            currentQuestion={currentQuestion}
-            setCurrentQuestion={setCurrentQuestion}
-            currentAnswer={currentAnswer}
-            setCurrentAnswer={setCurrentAnswer}
-            currentType={currentType}
-            setCurrentType={setCurrentType}
-            currentTypeItem={currentTypeItem}
-            setCurrentTypeItem={setCurrentTypeItem}
-            currentStatus={currentStatus}
-            setCurrentStatus={setCurrentStatus}
-            submitting={submitting}
-            onSubmit={handleAddQA}
-            qaTypes={qaTypes}
-            qaTypeItems={qaTypeItems}
-            loadingTypes={loadingTypes}
-            loadingTypeItems={false}
-            editingId={editingId}
-            onCancelEdit={resetForm}
-            onTypeChange={handleTypeChange}
-          />
+          {renderForm(false)}
 
           <QAList
             qaPairs={qaPairs}
             loadingQAs={loadingQAs}
-            onDelete={handleDeleteQA}
+            onDelete={setPendingDeleteId}
             onEdit={handleEditQA}
             getTypeName={getTypeItemName}
           />
         </div>
       </div>
+      {deleteDialog}
     </div>
   )
 }

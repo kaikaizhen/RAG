@@ -56,6 +56,8 @@ interface AddQAFormProps {
   editingId: string | null
   onCancelEdit: () => void
   onTypeChange: (typeId: string) => void
+  /** 手機版全螢幕編輯面板內使用：只輸出欄位，不含卡片外框、標題與送出按鈕（由面板自己提供） */
+  chromeless?: boolean
 }
 
 export function AddQAForm({
@@ -78,6 +80,7 @@ export function AddQAForm({
   editingId,
   onCancelEdit,
   onTypeChange,
+  chromeless = false,
 }: AddQAFormProps) {
   const isEditing = editingId !== null
 
@@ -87,42 +90,8 @@ export function AddQAForm({
     onTypeChange(value) // 觸發載入細項
   }
 
-  return (
-    <Card className="flex flex-col">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            {isEditing ? (
-              <>
-                <Save className="h-5 w-5" />
-                編輯 Q&A
-              </>
-            ) : (
-              <>
-                <Plus className="h-5 w-5" />
-                新增 Q&A
-              </>
-            )}
-          </CardTitle>
-          {isEditing && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onCancelEdit}
-              disabled={submitting}
-            >
-              <X className="h-4 w-4 mr-1" />
-              取消編輯
-            </Button>
-          )}
-        </div>
-        <CardDescription>
-          {isEditing
-            ? "修改問答的內容，儲存後立即生效"
-            : "建立新的問答對，儲存後即可被檢索"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 space-y-4">
+  const fields = (
+    <>
         {/* 第一層：類型 */}
         <div className="space-y-2">
           <Label htmlFor="type">類型</Label>
@@ -256,6 +225,49 @@ export function AddQAForm({
             disabled={submitting}
           />
         </div>
+
+    </>
+  )
+
+  if (chromeless) return <div className="space-y-5">{fields}</div>
+
+  return (
+    <Card className="flex flex-col">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            {isEditing ? (
+              <>
+                <Save className="h-5 w-5" />
+                編輯 Q&A
+              </>
+            ) : (
+              <>
+                <Plus className="h-5 w-5" />
+                新增 Q&A
+              </>
+            )}
+          </CardTitle>
+          {isEditing && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onCancelEdit}
+              disabled={submitting}
+            >
+              <X className="h-4 w-4 mr-1" />
+              取消編輯
+            </Button>
+          )}
+        </div>
+        <CardDescription>
+          {isEditing
+            ? "修改問答的內容，儲存後立即生效"
+            : "建立新的問答對，儲存後即可被檢索"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 space-y-4">
+        {fields}
 
         <Button 
           onClick={onSubmit} 

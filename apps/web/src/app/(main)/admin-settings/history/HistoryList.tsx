@@ -180,7 +180,7 @@ export function HistoryList({
               return (
                 <Card 
                   key={item.id} 
-                  className={`relative transition-all m-2 ${
+                  className={`relative transition-all mx-0 my-1.5 md:m-2 ${
                     showSelection ? 'cursor-pointer' : 'cursor-pointer hover:shadow-md'
                   } ${
                     isExpanded && !showSelection ? 'ring-2 ring-primary' : ''
@@ -230,7 +230,7 @@ export function HistoryList({
                             variant="ghost"
                             size="sm"
                             onClick={(e) => handleEditStart(e, item)}
-                            className="h-8 w-8 p-0"
+                            className="h-10 w-10 p-0 md:h-8 md:w-8"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -238,7 +238,7 @@ export function HistoryList({
                             variant="ghost"
                             size="sm"
                             onClick={(e) => handleDeleteClick(e, item.id)}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            className="h-10 w-10 p-0 text-destructive hover:text-destructive md:h-8 md:w-8"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -248,7 +248,7 @@ export function HistoryList({
 
                     {/* 展開的內容 */}
                     {isExpanded && !showSelection && (
-                      <div className="mt-4 ml-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+                      <div className="mt-4 space-y-4 md:ml-6" onClick={(e) => e.stopPropagation()}>
                         {isEditing ? (
                           <>
                             <div>
@@ -256,7 +256,7 @@ export function HistoryList({
                               <Textarea
                                 value={editQuestion}
                                 onChange={(e) => setEditQuestion(e.target.value)}
-                                className="min-h-[80px]"
+                                className="min-h-[96px]"
                                 disabled={isSaving}
                               />
                             </div>
@@ -265,14 +265,14 @@ export function HistoryList({
                               <Textarea
                                 value={editAnswer}
                                 onChange={(e) => setEditAnswer(e.target.value)}
-                                className="min-h-[120px]"
+                                className="min-h-[160px]"
                                 disabled={isSaving}
                               />
                             </div>
                             <div className="flex gap-2 justify-end">
                               <Button
                                 variant="outline"
-                                size="sm"
+                                size="default"
                                 onClick={handleEditCancel}
                                 disabled={isSaving}
                               >
