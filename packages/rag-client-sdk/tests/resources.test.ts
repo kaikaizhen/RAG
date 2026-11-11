@@ -126,6 +126,44 @@ describe('CRUD resources', () => {
     expect(server.requests[4]!.headers.authorization).toBe('Bearer access-a');
   });
 
+  it('apiTokens 與 inbox 走對的 method / path / body（權杖明文由建立的回應取得）', async () => {
+    const draft = { id: 7, spaceID: 1, question: 'q', answer: 'a', status: 'Pending', source: 'web', createAt: '2026-11-08T00:00:00Z' };
+    const server = fakeServer({
+      'GET /api/v1/ApiToken': () => ({ status: 200, body: [] }),
+      'POST /api/v1/ApiToken': () => ({ status: 200, body: { id: 1, name: 'n', token: 'rag_pat_x', tokenPrefix: 'rag_pat_x', scopes: [], spaceIDs: [], createAt: '2026-11-08T00:00:00Z' } }),
+      'DELETE /api/v1/ApiToken/1': () => ({ status: 200, body: { state: 'Success', message: 'ok' } }),
+      'GET /api/v1/Inbox': () => ({ status: 200, body: [draft] }),
+      'POST /api/v1/Inbox': () => ({ status: 200, body: draft }),
+      'PUT /api/v1/Inbox/7': () => ({ status: 200, body: draft }),
+      'POST /api/v1/Inbox/7/accept': () => ({ status: 200, body: { ...draft, status: 'Accepted' } }),
+      'POST /api/v1/Inbox/7/reject': () => ({ status: 200, body: { ...draft, status: 'Rejected' } }),
+    });
+    const client = await signedIn(server.fetch);
+
+    await client.apiTokens.list();
+    const created = await client.apiTokens.create({ name: 'n', scopes: ['inbox.write'], expiresInDays: 30 });
+    await client.apiTokens.revoke(1);
+    await client.inbox.list();
+    await client.inbox.create({ question: 'q', answer: 'a' });
+    await client.inbox.update(7, { question: 'q2', answer: 'a2' });
+    await client.inbox.accept(7, { qaItemTypeID: 3 });
+    await client.inbox.reject(7);
+
+    expect(created.token).toBe('rag_pat_x');
+    expect(server.requests.map((r) => `${r.method} ${r.path}`)).toEqual([
+      'GET /api/v1/ApiToken',
+      'POST /api/v1/ApiToken',
+      'DELETE /api/v1/ApiToken/1',
+      'GET /api/v1/Inbox',
+      'POST /api/v1/Inbox',
+      'PUT /api/v1/Inbox/7',
+      'POST /api/v1/Inbox/7/accept',
+      'POST /api/v1/Inbox/7/reject',
+    ]);
+    expect(server.requests[1]!.body).toMatchObject({ scopes: ['inbox.write'], expiresInDays: 30 });
+    expect(server.requests[6]!.body).toEqual({ qaItemTypeID: 3 });
+  });
+
   it('register / verifyEmail 不需登入，不帶 Authorization', async () => {
     const ok = () => ({ status: 200, body: { status: 'pending', message: 'ok' } });
     const server = fakeServer({ 'POST /api/v1/Auth/Register': ok, 'POST /api/v1/Auth/VerifyEmail': ok });

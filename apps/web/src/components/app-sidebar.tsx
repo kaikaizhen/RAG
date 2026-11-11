@@ -39,6 +39,8 @@ import {
   Trash2,
   Palette,
   NotebookPen,
+  Inbox,
+  Code2,
 } from "lucide-react"
 import { notesUrl } from "@/lib/note-sources"
 import * as React from "react"
@@ -128,6 +130,8 @@ export function AppSidebar() {
   // 管理入口依目前 Space 的 knowledge.write 權限顯示（Space 切換後重新判斷）
   const [canAccessSettings, setCanAccessSettings] = React.useState(false)
   const [pendingDelete, setPendingDelete] = React.useState<ChatHistory | null>(null)
+  // 暫存區待審筆數（給側邊欄的提示用）
+  const [inboxCount, setInboxCount] = React.useState(0)
   
   React.useEffect(() => {
     const profile = getProfile()
@@ -159,8 +163,12 @@ export function AppSidebar() {
     window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener)
     window.addEventListener('chatHistoryUpdated', handleChatHistoryUpdate)
     canWriteKnowledge().then(setCanAccessSettings)
+    const loadInboxCount = () => getClient().inbox.list().then((list) => setInboxCount(list.length)).catch(() => setInboxCount(0))
+    loadInboxCount()
+    window.addEventListener('inboxUpdated', loadInboxCount)
     const offSpace = getClient().on('space-changed', () => {
       canWriteKnowledge().then(setCanAccessSettings)
+      loadInboxCount()
       setRecentChats([])
       loadChatHistory()
       window.dispatchEvent(new CustomEvent('startNewChat'))
@@ -170,6 +178,7 @@ export function AppSidebar() {
       offSpace()
       window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener)
       window.removeEventListener('chatHistoryUpdated', handleChatHistoryUpdate)
+      window.removeEventListener('inboxUpdated', loadInboxCount)
     }
   }, [])
 
@@ -287,6 +296,27 @@ export function AppSidebar() {
                 <SidebarMenuButton onClick={handleNewChat} tooltip="新對話">
                   <Plus className="h-4 w-4" />
                   <span>新對話</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="暫存區">
+                  <a href="/inbox">
+                    <Inbox className="h-4 w-4" />
+                    <span>暫存區</span>
+                    {inboxCount > 0 && (
+                      <span className="ml-auto rounded-full bg-primary px-1.5 text-xs text-primary-foreground" aria-label={`${inboxCount} 筆待審`}>
+                        {inboxCount}
+                      </span>
+                    )}
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="開發者">
+                  <a href="/developer">
+                    <Code2 className="h-4 w-4" />
+                    <span>開發者</span>
+                  </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               {notesUrl && (

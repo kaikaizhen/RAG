@@ -60,7 +60,7 @@ namespace RAG.Services
             return _mapper.Map<List<GetQuestionDto>>(entitys);
         }
 
-        public async Task CreateAsync(CreateQuestionDto dto)
+        public async Task<int> CreateAsync(CreateQuestionDto dto)
         {
             var context = RequirePermission(SpacePermissions.KnowledgeWrite);
             var qaTypeId = await GetQaTypeIdAsync(dto.QaItemTypeID);
@@ -81,6 +81,7 @@ namespace RAG.Services
                 entity.VectorID = vectorId;
                 await _questionsRepo.UpdateAsync(entity);
                 await _questionsRepo.CommitAsync();
+                return entity.ID;
             }
             catch
             {

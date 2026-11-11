@@ -13,6 +13,8 @@ public partial class WenDaHubContext
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
+        ConfigurePlatform(modelBuilder);
+
         // 與實際資料庫對齊：以下欄位在既有資料庫為 utf8mb4，但 scaffold model 未記錄
         // （2026-09-25 以 information_schema 比對開發資料庫確認）
         modelBuilder.Entity<ChatHeader>().Property(e => e.Name).UseCollation("utf8mb4_unicode_ci");

@@ -17,8 +17,8 @@ namespace RAG.Services.Interfaces
         /// 新增問題
         /// </summary>
         /// <param name="dto"></param>
-        /// <returns></returns>
-        Task CreateAsync(CreateQuestionDto dto);
+        /// <returns>新問題的編號</returns>
+        Task<int> CreateAsync(CreateQuestionDto dto);
 
         /// <summary>
         /// 更新問題

@@ -4,6 +4,116 @@
  */
 
 export interface paths {
+    "/api/v1/ApiToken": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ApiTokenVM"][];
+                        "application/json": components["schemas"]["ApiTokenVM"][];
+                        "text/json": components["schemas"]["ApiTokenVM"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateApiTokenParam"];
+                    "text/json": components["schemas"]["CreateApiTokenParam"];
+                    "application/*+json": components["schemas"]["CreateApiTokenParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreateApiTokenVM"];
+                        "application/json": components["schemas"]["CreateApiTokenVM"];
+                        "text/json": components["schemas"]["CreateApiTokenVM"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ApiToken/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/Auth/Login": {
         parameters: {
             query?: never;
@@ -468,6 +578,234 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: "Pending";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DraftVM"][];
+                        "application/json": components["schemas"]["DraftVM"][];
+                        "text/json": components["schemas"]["DraftVM"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateDraftParam"];
+                    "text/json": components["schemas"]["CreateDraftParam"];
+                    "application/*+json": components["schemas"]["CreateDraftParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DraftVM"];
+                        "application/json": components["schemas"]["DraftVM"];
+                        "text/json": components["schemas"]["DraftVM"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Inbox/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateDraftParam"];
+                    "text/json": components["schemas"]["UpdateDraftParam"];
+                    "application/*+json": components["schemas"]["UpdateDraftParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DraftVM"];
+                        "application/json": components["schemas"]["DraftVM"];
+                        "text/json": components["schemas"]["DraftVM"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Inbox/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AcceptDraftParam"];
+                    "text/json": components["schemas"]["AcceptDraftParam"];
+                    "application/*+json": components["schemas"]["AcceptDraftParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DraftVM"];
+                        "application/json": components["schemas"]["DraftVM"];
+                        "text/json": components["schemas"]["DraftVM"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Inbox/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DraftVM"];
+                        "application/json": components["schemas"]["DraftVM"];
+                        "text/json": components["schemas"]["DraftVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1219,6 +1557,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptDraftParam: {
+            /** Format: int32 */
+            qaItemTypeID?: null | number;
+            status?: null | string;
+        };
+        ApiTokenVM: {
+            /** Format: int32 */
+            id?: number;
+            name?: string;
+            tokenPrefix?: string;
+            scopes?: string[];
+            spaceIDs?: number[];
+            /** Format: date-time */
+            createAt?: string;
+            /** Format: date-time */
+            expiresAt?: null | string;
+            /** Format: date-time */
+            lastUsedAt?: null | string;
+        };
         ArtifactVM: {
             id?: string;
             version?: string;
@@ -1231,6 +1588,35 @@ export interface components {
             answer?: string;
             related?: string[];
             chatID?: string;
+        };
+        CreateApiTokenParam: {
+            name: string;
+            scopes: string[];
+            spaceIDs?: null | number[];
+            /** Format: int32 */
+            expiresInDays?: null | number;
+        };
+        CreateApiTokenVM: {
+            token?: string;
+            /** Format: int32 */
+            id?: number;
+            name?: string;
+            tokenPrefix?: string;
+            scopes?: string[];
+            spaceIDs?: number[];
+            /** Format: date-time */
+            createAt?: string;
+            /** Format: date-time */
+            expiresAt?: null | string;
+            /** Format: date-time */
+            lastUsedAt?: null | string;
+        };
+        CreateDraftParam: {
+            question: string;
+            answer: string;
+            /** Format: int32 */
+            qaItemTypeID?: null | number;
+            sourceRef?: null | string;
         };
         CreateQaTypeItemParam: {
             /** Format: int32 */
@@ -1267,6 +1653,25 @@ export interface components {
             permissions?: string[];
             repositoryID?: null | string;
             projectID?: null | string;
+        };
+        DraftVM: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            spaceID?: number;
+            question?: string;
+            answer?: string;
+            /** Format: int32 */
+            qaItemTypeID?: null | number;
+            source?: string;
+            sourceRef?: null | string;
+            status?: string;
+            /** Format: int32 */
+            acceptedQuestionID?: null | number;
+            /** Format: date-time */
+            createAt?: string;
+            /** Format: date-time */
+            reviewedAt?: null | string;
         };
         EffectiveSkillVM: {
             spaceKey?: string;
@@ -1367,6 +1772,12 @@ export interface components {
             name?: string;
             role?: string;
             isDefault?: boolean;
+        };
+        UpdateDraftParam: {
+            question: string;
+            answer: string;
+            /** Format: int32 */
+            qaItemTypeID?: null | number;
         };
         UpdateQaTypeItemParam: {
             /** Format: int32 */

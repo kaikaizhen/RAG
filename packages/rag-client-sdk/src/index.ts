@@ -25,6 +25,14 @@ export {
   type UpdateQaTypeItemInput,
   type CreateQuestionInput,
   type UpdateQuestionInput,
+  type ApiToken,
+  type CreatedApiToken,
+  type CreateApiTokenInput,
+  type Draft,
+  type DraftStatus,
+  type CreateDraftInput,
+  type UpdateDraftInput,
+  type AcceptDraftInput,
 } from './client.js';
 export {
   QuestionQueryType,

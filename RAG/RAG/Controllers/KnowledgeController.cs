@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RAG.Authentication.ApiTokens;
 using RAG.Context;
 using RAG.Models.ViewModels;
 using RAG.Models.ViewModels.Context;
@@ -15,7 +16,6 @@ namespace RAG.Controllers
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
     [ApiVersion("1.0")]
-    [Authorize]
     [RequireSpaceContext]
     [Tags("知識檢索模組")]
     public class KnowledgeController : ControllerBase
@@ -40,6 +40,7 @@ namespace RAG.Controllers
         /// <param name="request"></param>
         /// <returns></returns>
         [HttpPost("search")]
+        [Authorize(Policy = ApiPolicies.KnowledgeSearch)]
         [ProducesResponseType(typeof(KnowledgeSearchVM), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status403Forbidden)]

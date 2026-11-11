@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using RAG.Authentication.ApiTokens;
 
 namespace RAG.Authentication
 {
@@ -23,14 +25,22 @@ namespace RAG.Authentication
             services.AddSingleton<IRefreshTokenValidator, RefreshTokenValidator>();
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
+            services.AddScoped<IApiTokenService, ApiTokenService>();
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(ApiTokenAuthenticationHandler.Scheme, _ => { })
                 .AddJwtBearer(options =>
                 {
                     options.MapInboundClaims = true;
                     options.TokenValidationParameters = jwtOptions.CreateValidationParameters();
                     options.Events = new JwtBearerEvents
                     {
+                        // 應用程式權杖不是 JWT：略過，交給 ApiToken scheme（只有掛了 ApiPolicies 的 endpoint 會用到）
+                        OnMessageReceived = context =>
+                        {
+                            if (ApiTokenAuthenticationHandler.IsApiToken(context.Request)) context.NoResult();
+                            return Task.CompletedTask;
+                        },
                         OnTokenValidated = context =>
                         {
                             var tokenUse = context.Principal?.FindFirst(JwtOptions.TokenUseClaim)?.Value;
@@ -69,6 +79,11 @@ namespace RAG.Authentication
 
                 options.DefaultPolicy = authenticatedUser;
 
+                // 可同時接受「登入 token」與「應用程式權杖」的 endpoint：權杖必須帶有對應的 scope；登入的使用者不受 scope 限制
+                AddApiPolicy(options, ApiPolicies.KnowledgeSearch, ApiTokenScopes.KnowledgeSearch);
+                AddApiPolicy(options, ApiPolicies.InboxWrite, ApiTokenScopes.InboxWrite);
+                AddApiPolicy(options, ApiPolicies.SpaceRead, ApiTokenScopes.SpaceRead);
+
                 // 預設所有 endpoint 需要登入；僅 Library 掛載的 OpenAPI 文件（/openapi/*，與舊的 Swagger JSON 一樣公開）例外
                 options.FallbackPolicy = new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
                     .RequireAssertion(context =>
@@ -102,6 +117,16 @@ namespace RAG.Authentication
             });
 
             return services;
+        }
+
+        private static void AddApiPolicy(AuthorizationOptions options, string name, string scope)
+        {
+            options.AddPolicy(name, new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme, ApiTokenAuthenticationHandler.Scheme)
+                .RequireAuthenticatedUser()
+                .RequireAssertion(context =>
+                    context.User.HasClaim(ApiTokenClaims.TokenUse, JwtOptions.AccessTokenUse)
+                    || context.User.HasClaim(ApiTokenClaims.Scope, scope))
+                .Build());
         }
     }
 }

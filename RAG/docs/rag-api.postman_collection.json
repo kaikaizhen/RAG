@@ -1,0 +1,1547 @@
+{
+  "info": {
+    "name": "RAG API（.NET 後端）",
+    "description": "1) 到 Collection 的 Variables 填 account / password；2) 執行「驗證功能模組 → POST /Auth/Login」，token 會自動存入；3) 其餘請求自動帶 Bearer。要切換 Space 時，啟用請求上的 X-Space-Id 標頭並填 spaceId。access token 過期（3 小時）時執行 /Auth/Refresh。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://rag.name404.com"
+    },
+    {
+      "key": "account",
+      "value": ""
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "spaceId",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "驗證功能模組",
+      "item": [
+        {
+          "name": "POST /Auth/Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Auth/Login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Auth",
+                "Login"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": \"{{account}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const r = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', r.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', r.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /Auth/Refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Auth/Refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Auth",
+                "Refresh"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const r = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', r.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', r.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /Auth/Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Auth/Register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Auth",
+                "Register"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": \"string\",\n  \"password\": \"string\",\n  \"nameZh\": null,\n  \"nameEn\": null,\n  \"nameOther\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /Auth/VerifyEmail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Auth/VerifyEmail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Auth",
+                "VerifyEmail"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "應用程式權杖模組",
+      "item": [
+        {
+          "name": "GET /ApiToken",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ApiToken",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ApiToken"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "POST /ApiToken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ApiToken",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ApiToken"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"scopes\": [\n    \"string\"\n  ],\n  \"spaceIDs\": null,\n  \"expiresInDays\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /ApiToken/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ApiToken/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ApiToken",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tool 功能模組",
+      "item": [
+        {
+          "name": "GET /Capability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Capability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Capability"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "回應功能模組",
+      "item": [
+        {
+          "name": "POST /Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Chat"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"什麼是三層式架構？\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /Chat",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Chat"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "POST /Chat/ChatStream",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Chat/ChatStream",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Chat",
+                "ChatStream"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"什麼是三層式架構？\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /Chat/{chatId}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Chat/:chatId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Chat",
+                ":chatId"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /Chat/{chatId}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Chat/:chatId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Chat",
+                ":chatId"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "暫存區模組",
+      "item": [
+        {
+          "name": "POST /Inbox",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Inbox",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Inbox"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"string\",\n  \"answer\": \"string\",\n  \"qaItemTypeID\": null,\n  \"sourceRef\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /Inbox",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Inbox?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Inbox"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "PUT /Inbox/{id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Inbox/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Inbox",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"string\",\n  \"answer\": \"string\",\n  \"qaItemTypeID\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /Inbox/{id}/accept",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Inbox/:id/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Inbox",
+                ":id",
+                "accept"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qaItemTypeID\": null,\n  \"status\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /Inbox/{id}/reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Inbox/:id/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Inbox",
+                ":id",
+                "reject"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "知識檢索模組",
+      "item": [
+        {
+          "name": "POST /Knowledge/search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Knowledge/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Knowledge",
+                "search"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"string\",\n  \"type\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "問題種類功能模組",
+      "item": [
+        {
+          "name": "GET /QaType",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/QaType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "QaType"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "POST /QaType",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/QaType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "QaType"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nameZh\": null,\n  \"nameEn\": null,\n  \"nameOther\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /QaType",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/QaType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "QaType"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"nameZh\": null,\n  \"nameEn\": null,\n  \"nameOther\": null,\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /QaType/{Id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/QaType/:Id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "QaType",
+                ":Id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "Id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "問題種類細項功能模組",
+      "item": [
+        {
+          "name": "GET /QaTypeItem",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/QaTypeItem",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "QaTypeItem"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "POST /QaTypeItem",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/QaTypeItem",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "QaTypeItem"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qaTypeID\": 1,\n  \"nameZh\": null,\n  \"nameEn\": null,\n  \"nameOther\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /QaTypeItem",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/QaTypeItem",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "QaTypeItem"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"qaTypeID\": 1,\n  \"nameZh\": null,\n  \"nameEn\": null,\n  \"nameOther\": null,\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /QaTypeItem/{Id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/QaTypeItem/:Id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "QaTypeItem",
+                ":Id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "Id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "問題模組",
+      "item": [
+        {
+          "name": "GET /Question",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Question?Type=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Question"
+              ],
+              "query": [
+                {
+                  "key": "Id",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "Type",
+                  "value": "0",
+                  "disabled": false
+                }
+              ],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "POST /Question",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Question",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Question"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qaItemTypeID\": 1,\n  \"question\": \"string\",\n  \"answer\": \"string\",\n  \"status\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /Question",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Question",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Question"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"qaItemTypeID\": 1,\n  \"question\": \"string\",\n  \"answer\": \"string\",\n  \"status\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /Question/{Id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Question/:Id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Question",
+                ":Id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "Id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Skill / Workflow 功能模組",
+      "item": [
+        {
+          "name": "GET /Skill/bundle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Skill/bundle?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Skill",
+                "bundle"
+              ],
+              "query": [
+                {
+                  "key": "tokenBudget",
+                  "value": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "GET /Skill/effective",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Skill/effective",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Skill",
+                "effective"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Space 功能模組",
+      "item": [
+        {
+          "name": "GET /Space",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Space",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Space"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "GET /Space/current",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Space/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Space",
+                "current"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "使用者管理模組",
+      "item": [
+        {
+          "name": "GET /User/{Id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/User/:Id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "User",
+                ":Id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "Id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /User/{Id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/User/:Id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "User",
+                ":Id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "Id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/User",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "User"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": \"string\",\n  \"password\": \"string\",\n  \"nameZh\": null,\n  \"nameEn\": null,\n  \"nameOther\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/User",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "User"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"account\": \"string\",\n  \"password\": \"string\",\n  \"nameZh\": null,\n  \"nameEn\": null,\n  \"nameOther\": null,\n  \"manage\": \"string\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

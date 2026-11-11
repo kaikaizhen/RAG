@@ -26,6 +26,15 @@ export type CreateQaTypeItemInput = Schemas['CreateQaTypeItemParam'];
 export type UpdateQaTypeItemInput = Schemas['UpdateQaTypeItemParam'];
 export type CreateQuestionInput = Schemas['CreateQuestionParam'];
 export type UpdateQuestionInput = Schemas['UpdateQuestionParam'];
+export type ApiToken = Schemas['ApiTokenVM'];
+/** 建立權杖的回應：`token` 明文只會出現這一次 */
+export type CreatedApiToken = Schemas['CreateApiTokenVM'];
+export type CreateApiTokenInput = Schemas['CreateApiTokenParam'];
+export type Draft = Schemas['DraftVM'];
+export type CreateDraftInput = Schemas['CreateDraftParam'];
+export type UpdateDraftInput = Schemas['UpdateDraftParam'];
+export type AcceptDraftInput = Schemas['AcceptDraftParam'];
+export type DraftStatus = 'Pending' | 'Accepted' | 'Rejected';
 
 /** ChatStream 事件：chat = 這次問答所屬的聊天室編號（先於文字送出）；text = 一段回答文字 */
 export type ChatStreamEvent = { type: 'chat'; chatId: string } | { type: 'text'; text: string };
@@ -159,6 +168,23 @@ export class RagClient {
     create: (input: CreateQuestionInput) => this.request<MutationResult>('POST', '/Question', { body: input }),
     update: (input: UpdateQuestionInput) => this.request<MutationResult>('PUT', '/Question', { body: input }),
     delete: (id: number) => this.request<MutationResult>('DELETE', `/Question/${pathId(id)}`),
+  };
+
+  /** 應用程式權杖：給你自己的 AI / 外部服務用。權杖只能搜尋與放進暫存區，不能直接寫入知識庫；管理權杖本身需要登入 */
+  readonly apiTokens = {
+    list: () => this.request<ApiToken[]>('GET', '/ApiToken'),
+    create: (input: CreateApiTokenInput) => this.request<CreatedApiToken>('POST', '/ApiToken', { body: input }),
+    revoke: (id: number) => this.request<MutationResult>('DELETE', `/ApiToken/${pathId(id)}`),
+  };
+
+  /** 暫存區（目前 Space、只有自己的草稿）：審查並接受後才會寫入知識庫與向量資料庫 */
+  readonly inbox = {
+    list: (status: DraftStatus = 'Pending') => this.request<Draft[]>('GET', `/Inbox?status=${status}`),
+    create: (input: CreateDraftInput) => this.request<Draft>('POST', '/Inbox', { body: input }),
+    update: (id: number, input: UpdateDraftInput) => this.request<Draft>('PUT', `/Inbox/${pathId(id)}`, { body: input }),
+    /** 接受：此時才寫入知識庫（預設狀態 Inferred）。需要該 Space 的 knowledge.write */
+    accept: (id: number, input: AcceptDraftInput = {}) => this.request<Draft>('POST', `/Inbox/${pathId(id)}/accept`, { body: input }),
+    reject: (id: number) => this.request<Draft>('POST', `/Inbox/${pathId(id)}/reject`, { body: {} }),
   };
 
   readonly users = {

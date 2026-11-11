@@ -1,4 +1,5 @@
 using RAG.Authentication;
+using RAG.Authentication.ApiTokens;
 using RAG.SpaceRuntime;
 using System.Globalization;
 
@@ -41,7 +42,27 @@ namespace RAG.Spaces
                 return;
             }
 
+            // 應用程式權杖可以限定只能用在特定 Space：只有一個時當作預設；其他一律不能超出
+            var tokenSpaces = context.User.HasClaim(ApiTokenClaims.TokenUse, ApiTokenClaims.PersonalAccessToken)
+                ? context.User.FindAll(ApiTokenClaims.AllowedSpace).Select(c => int.Parse(c.Value, CultureInfo.InvariantCulture)).ToList()
+                : new List<int>();
+            if (tokenSpaces.Count > 0)
+            {
+                if (spaceIdHint is null && tokenSpaces.Count == 1) spaceIdHint = tokenSpaces[0];
+                if (spaceIdHint is int requested && !tokenSpaces.Contains(requested))
+                {
+                    await WriteErrorAsync(context, StatusCodes.Status403Forbidden, "Forbidden space");
+                    return;
+                }
+            }
+
             var resolution = await spaceResolver.ResolveAsync(userId, spaceIdHint, context.RequestAborted);
+            if (resolution.Succeeded && tokenSpaces.Count > 0 && !tokenSpaces.Contains(resolution.Context!.SpaceId))
+            {
+                await WriteErrorAsync(context, StatusCodes.Status403Forbidden, "Forbidden space");
+                return;
+            }
+
             if (!resolution.Succeeded)
             {
                 var message = resolution.Failure == SpaceResolutionFailure.SelectionRequired
