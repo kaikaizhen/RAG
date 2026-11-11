@@ -135,9 +135,9 @@ export default function DeveloperPage() {
   const canCreate = name.trim().length > 0 && scopes.length > 0 && (!limitSpaces || spaceIds.length > 0)
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 py-6 md:p-8">
+    <div className="mx-auto max-w-3xl space-y-6 px-4 pb-8 pt-4 md:p-8">
       <div>
-        <h1 className="text-2xl font-bold">開發者</h1>
+        <h1 className="hidden text-2xl font-bold md:block">開發者</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           用應用程式權杖，讓你自己的 AI 或服務搜尋知識庫，並把整理好的內容放進暫存區。權杖不能直接寫入知識庫，一定由你審查接受。
         </p>
