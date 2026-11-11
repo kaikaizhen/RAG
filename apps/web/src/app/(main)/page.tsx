@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ArrowDown, SendHorizontal, SlidersHorizontal, Square } from "lucide-react"
+import { ArrowDown, RotateCw, SendHorizontal, SlidersHorizontal, Square } from "lucide-react"
 import { RagApiError, type QaType } from "@rag/client-sdk"
 import { describeError, getClient, getProfile } from "@/lib/rag"
 
@@ -26,6 +26,14 @@ interface Message {
   error?: boolean
   /** 知識庫裡找不到答案（不是系統錯誤），可以把問題交給筆記 */
   notFound?: boolean
+  /** 暫時性的失敗（網路、伺服器忙碌、逾時）：同一個問題再送一次可能就會成功 */
+  retryable?: boolean
+}
+
+/** 暫時性的失敗：連不上伺服器、逾時（408）、被限流（429）或伺服器端錯誤（5xx）。其他 4xx（找不到內容、沒有權限）重送也一樣 */
+function isTransientError(error: unknown): boolean {
+  if (error instanceof RagApiError) return error.status >= 500 || error.status === 408 || error.status === 429
+  return error instanceof TypeError
 }
 
 /** 不指定種類 = 搜尋目前 Space 的全部知識 */
@@ -43,6 +51,7 @@ export default function MainPage() {
   const [qaTypes, setQaTypes] = React.useState<QaType[]>([])
   const [isMobile, setIsMobile] = React.useState<boolean>(false)
   const abortControllerRef = React.useRef<AbortController | null>(null)
+  const sendingRef = React.useRef(false)
   // handleSubmit 內需要最新的 chatId，但不希望每次變動都重建 listener
   const currentChatIdRef = React.useRef<string>("")
   React.useEffect(() => {
@@ -196,15 +205,16 @@ export default function MainPage() {
     })
   }
 
-  // 發送訊息並接收串流輸出
-  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!message.trim() || isStreaming) return
+  // 發送問題並接收串流輸出。retry = 重送上一個失敗的問題：沿用畫面上那則提問，只重置它的回答
+  const sendQuestion = React.useCallback(async (userMessage: string, retry = false) => {
+    // 用 ref 同步上鎖：快速連按兩次 Enter / 送出時，第二次發生在 isStreaming 的 state 更新之前，只靠 state 擋不住
+    if (isStreaming || sendingRef.current) return
+    sendingRef.current = true
 
-    const userMessage = message.trim()
-    setMessage("")
     stickToBottomRef.current = true // 自己送出訊息時一定要看到最新內容
-    setMessages(prev => [...prev, { role: "user", content: userMessage }, { role: "assistant", content: "" }])
+    setMessages(prev => retry
+      ? [...prev.slice(0, -1), { role: "assistant", content: "" }]
+      : [...prev, { role: "user", content: userMessage }, { role: "assistant", content: "" }])
 
     const controller = new AbortController()
     abortControllerRef.current = controller
@@ -234,12 +244,21 @@ export default function MainPage() {
       if (error instanceof RagApiError && error.status < 500) console.warn("發送訊息未成功:", error.message)
       else console.error("發送訊息失敗:", error)
       // 找不到可靠的相關內容時，後端回 4xx 並附原因，直接顯示給使用者
-      updateLastMessage(() => ({ role: "assistant", content: describeError(error, "抱歉，發生了錯誤。請稍後再試。"), error: true, notFound: error instanceof RagApiError && error.status === 404 }))
+      updateLastMessage(() => ({ role: "assistant", content: describeError(error, "抱歉，發生了錯誤。請稍後再試。"), error: true, notFound: error instanceof RagApiError && error.status === 404, retryable: isTransientError(error) }))
     } finally {
+      sendingRef.current = false
       setIsStreaming(false)
       abortControllerRef.current = null
     }
-  }, [message, isStreaming, currentTypeId])
+  }, [isStreaming, currentTypeId])
+
+  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
+    e.preventDefault()
+    const userMessage = message.trim()
+    if (!userMessage || isStreaming || sendingRef.current) return
+    setMessage("")
+    await sendQuestion(userMessage)
+  }, [message, isStreaming, sendQuestion])
 
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // 輸入法（注音、拼音等）組字或選字時按 Enter 是「確認選字」，不是送出；
@@ -415,6 +434,19 @@ export default function MainPage() {
                       <AssistantMessage content={msg.content} streaming={isStreaming && index === messages.length - 1} />
                     ) : (
                       <p className="whitespace-pre-wrap text-sm md:text-base">{msg.content}</p>
+                    )}
+                    {msg.retryable && index === messages.length - 1 && messages[index - 1]?.role === "user" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 min-h-8 rounded-full"
+                        disabled={isStreaming}
+                        onClick={() => sendQuestion(messages[index - 1].content, true)}
+                      >
+                        <RotateCw className="mr-1 h-3.5 w-3.5" />
+                        重新送出
+                      </Button>
                     )}
                     {msg.notFound && gapHref(messages[index - 1]?.content ?? "") && (
                       <a
