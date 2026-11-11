@@ -218,7 +218,7 @@ export default function HistoryPage() {
       )}
 
       <div className="flex-1 overflow-hidden p-4 md:p-6">
-        <div className="h-full flex flex-col gap-4 max-w-5xl mx-auto">
+        <div className="h-full flex flex-col gap-3 max-w-5xl mx-auto">
           <HistorySearch 
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}

@@ -218,3 +218,13 @@ html {
 button, a, [role="button"] {
   touch-action: manipulation;
 }
+
+/* 手機版浮動按鈕：浮在底部分頁列（4rem）上方；鍵盤開啟、分頁列隱藏時降到安全區上方 */
+@media (max-width: 767px) {
+  .fab-above-nav {
+    bottom: calc(4rem + env(safe-area-inset-bottom) + 1rem);
+  }
+  html[data-kb="open"] .fab-above-nav {
+    bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  }
+}
