@@ -248,6 +248,7 @@ export default function MainPage() {
     const offSpace = getClient().on('space-changed', () => {
       setCurrentTypeId(ALL_TYPES)
       loadQaTypes()
+      getClient().spaces.list().then((list) => setHasManySpaces(list.length > 1)).catch(() => setHasManySpaces(false))
     })
 
     return () => {

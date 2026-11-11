@@ -109,6 +109,18 @@ export class RagClient {
   readonly spaces = {
     /** 目前帳號可使用的 Space（伺服器依 membership 決定） */
     list: () => this.cached('spaces', () => this.request<Space[]>('GET', '/Space')),
+    /** 建立新空間，你是它的擁有者（owner）；每人最多擁有 10 個。只接受登入。不會自動切換，需要的話再呼叫 select */
+    create: async (name: string) => {
+      const created = await this.request<Space>('POST', '/Space', { body: { name } });
+      this.cache.delete('spaces');
+      return created;
+    },
+    /** 重新命名空間（只有擁有者可以） */
+    rename: async (spaceId: number, name: string) => {
+      const renamed = await this.request<Space>('PUT', `/Space/${pathId(spaceId)}`, { body: { name } });
+      this.cache.clear();
+      return renamed;
+    },
     /** 伺服器依 selection hint 解析出的 Space；未授權時拋出 RagForbiddenError */
     current: () => this.cached(`space:${this.selectedSpaceId ?? 'auto'}:current`, () => this.request<CurrentSpace>('GET', '/Space/current')),
     /** 設定 Space selection hint（null = 交由伺服器依預設規則選擇）；不代表已授權 */

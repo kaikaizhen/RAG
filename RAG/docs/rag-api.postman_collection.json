@@ -1363,6 +1363,92 @@
           }
         },
         {
+          "name": "POST /Space",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Space",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Space"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /Space/{id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Space/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Space",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "GET /Space/current",
           "request": {
             "method": "GET",

@@ -216,6 +216,29 @@ describe('CRUD resources', () => {
     expect(server.requests[2]!.body).toMatchObject({ query: 'q', scope: 'all' });
   });
 
+  it('spaces.create / rename 走對的 method / path / body，並讓空間清單重新載入', async () => {
+    const space = { spaceID: 5, key: 't-abc', name: '研究', role: 'owner', isDefault: false };
+    let listed = 0;
+    const server = fakeServer({
+      'GET /api/v1/Space': () => ({ status: 200, body: (listed++, [space]) }),
+      'POST /api/v1/Space': () => ({ status: 200, body: space }),
+      'PUT /api/v1/Space/5': () => ({ status: 200, body: { ...space, name: '新名' } }),
+    });
+    const client = await signedIn(server.fetch);
+
+    await client.spaces.list();
+    await client.spaces.list(); // 快取：只打一次
+    expect(listed).toBe(1);
+    const created = await client.spaces.create('研究');
+    await client.spaces.list(); // 建立後快取失效：重新載入
+    expect(listed).toBe(2);
+    await client.spaces.rename(5, '新名');
+
+    expect(created.spaceID).toBe(5);
+    expect(server.requests.filter((r) => r.method !== 'GET').map((r) => `${r.method} ${r.path}`)).toEqual(['POST /api/v1/Space', 'PUT /api/v1/Space/5']);
+    expect(server.requests.find((r) => r.method === 'POST')!.body).toEqual({ name: '研究' });
+  });
+
   it('register / verifyEmail 不需登入，不帶 Authorization', async () => {
     const ok = () => ({ status: 200, body: { status: 'pending', message: 'ok' } });
     const server = fakeServer({ 'POST /api/v1/Auth/Register': ok, 'POST /api/v1/Auth/VerifyEmail': ok });

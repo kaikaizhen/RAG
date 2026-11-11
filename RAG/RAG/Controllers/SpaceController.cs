@@ -1,8 +1,10 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RAG.Authentication;
 using RAG.Authentication.ApiTokens;
+using RAG.Models.Params.Space;
 using RAG.Models.ViewModels;
 using RAG.Models.ViewModels.Space;
 using RAG.SpaceRuntime;
@@ -19,16 +21,19 @@ namespace RAG.Controllers
         private readonly ICurrentUserAccessor _currentUser;
         private readonly ISpaceMembershipStore _membershipStore;
         private readonly ISpaceContextAccessor _spaceContextAccessor;
+        private readonly ISpaceManagementService _spaceManagement;
 
         public SpaceController(
             ICurrentUserAccessor currentUser,
             ISpaceMembershipStore membershipStore,
-            ISpaceContextAccessor spaceContextAccessor
+            ISpaceContextAccessor spaceContextAccessor,
+            ISpaceManagementService spaceManagement
         )
         {
             _currentUser = currentUser;
             _membershipStore = membershipStore;
             _spaceContextAccessor = spaceContextAccessor;
+            _spaceManagement = spaceManagement;
         }
 
         /// <summary>
@@ -53,6 +58,36 @@ namespace RAG.Controllers
                 .Select(m => new SpaceVM { SpaceID = m.SpaceId, Key = m.SpaceKey, Name = m.SpaceName, Role = m.Role, IsDefault = m.IsDefault })
                 .ToList());
         }
+
+        /// <summary>
+        /// 建立新空間，你是它的擁有者（owner）。只接受登入，應用程式權杖不能建立空間；每人最多擁有 10 個空間
+        /// </summary>
+        [HttpPost]
+        [Authorize]
+        [EnableRateLimiting(SpaceManagementRateLimits.Create)]
+        [ProducesResponseType(typeof(SpaceVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Create([FromBody] SaveSpaceParam request)
+        {
+            var (space, membership) = await _spaceManagement.CreateAsync(_currentUser.UserId, request.Name, HttpContext.RequestAborted);
+            return Ok(ToVM(space, membership));
+        }
+
+        /// <summary>
+        /// 重新命名空間（只有擁有者可以）
+        /// </summary>
+        [HttpPut("{id}")]
+        [Authorize]
+        [ProducesResponseType(typeof(SpaceVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorVM), StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> Rename([FromRoute] int id, [FromBody] SaveSpaceParam request)
+        {
+            var (space, membership) = await _spaceManagement.RenameAsync(_currentUser.UserId, id, request.Name, HttpContext.RequestAborted);
+            return Ok(ToVM(space, membership));
+        }
+
+        private static SpaceVM ToVM(Models.Entities.Space space, Models.Entities.AccountSpace membership) =>
+            new() { SpaceID = space.ID, Key = space.Key, Name = space.Name, Role = membership.Role, IsDefault = membership.IsDefault };
 
         /// <summary>
         /// 解析目前 request 的 Space（以 X-Space-Id header 作為選擇提示）

@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { BookOpen, Code2, ListChecks, LogOut, Moon, Palette, User, Users } from "lucide-react"
+import { BookOpen, Code2, ListChecks, LogOut, Moon, Palette, Plus, User, Users } from "lucide-react"
 import type { Space } from "@rag/client-sdk"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { MobileGroup, MobileRow, MobileTitle } from "@/components/mobile/list"
 import { ThemeColorPicker } from "@/components/theme-color-picker"
+import { CreateSpaceDialog, SPACES_UPDATED_EVENT } from "@/components/create-space-dialog"
 import { useTheme } from "@/contexts/theme-context"
 import { canWriteKnowledge, getClient, getProfile, signOut } from "@/lib/rag"
 import { cn } from "@/lib/utils"
@@ -22,19 +23,28 @@ export default function MePage() {
   const [selected, setSelected] = React.useState<number | null>(null)
   const [canManage, setCanManage] = React.useState(false)
   const [showColors, setShowColors] = React.useState(false)
+  const [creatingSpace, setCreatingSpace] = React.useState(false)
 
   React.useEffect(() => {
     const rag = getClient()
     setProfile(getProfile())
-    rag.spaces.list().then((list) => {
-      setSpaces(list)
-      setSelected(rag.spaces.selected())
-    }).catch(() => setSpaces([]))
+    const loadSpaces = () =>
+      rag.spaces.list().then((list) => {
+        setSpaces(list)
+        setSelected(rag.spaces.selected())
+      }).catch(() => setSpaces([]))
+    void loadSpaces()
     canWriteKnowledge().then(setCanManage)
-    return rag.on("space-changed", ({ spaceId }) => {
+    window.addEventListener(SPACES_UPDATED_EVENT, loadSpaces)
+    const off = rag.on("space-changed", ({ spaceId }) => {
       setSelected(spaceId)
       canWriteKnowledge().then(setCanManage)
+      void loadSpaces()
     })
+    return () => {
+      off()
+      window.removeEventListener(SPACES_UPDATED_EVENT, loadSpaces)
+    }
   }, [])
 
   const name = profile?.name ?? "使用者"
@@ -57,8 +67,7 @@ export default function MePage() {
         />
       </MobileGroup>
 
-      {spaces.length > 1 && (
-        <MobileGroup label="空間">
+      <MobileGroup label="空間">
           {spaces.map((space) => (
             <MobileRow
               key={space.spaceID}
@@ -69,8 +78,9 @@ export default function MePage() {
               onClick={() => space.spaceID != null && getClient().spaces.select(space.spaceID)}
             />
           ))}
+          <MobileRow icon={<Plus className="h-5 w-5" />} label="建立新空間" onClick={() => setCreatingSpace(true)} />
         </MobileGroup>
-      )}
+      <CreateSpaceDialog open={creatingSpace} onOpenChange={setCreatingSpace} />
 
       {canManage && (
         <MobileGroup label="知識庫">

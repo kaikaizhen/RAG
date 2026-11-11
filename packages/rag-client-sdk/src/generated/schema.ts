@@ -1382,6 +1382,100 @@ export interface paths {
             };
         };
         put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveSpaceParam"];
+                    "text/json": components["schemas"]["SaveSpaceParam"];
+                    "application/*+json": components["schemas"]["SaveSpaceParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SpaceVM"];
+                        "application/json": components["schemas"]["SpaceVM"];
+                        "text/json": components["schemas"]["SpaceVM"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Space/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveSpaceParam"];
+                    "text/json": components["schemas"]["SaveSpaceParam"];
+                    "application/*+json": components["schemas"]["SaveSpaceParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SpaceVM"];
+                        "application/json": components["schemas"]["SpaceVM"];
+                        "text/json": components["schemas"]["SpaceVM"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -2037,6 +2131,9 @@ export interface components {
         RegistrationResultVM: {
             status?: string;
             message?: string;
+        };
+        SaveSpaceParam: {
+            name: string;
         };
         SaveWebhookParam: {
             name: string;

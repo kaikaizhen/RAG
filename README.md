@@ -29,7 +29,7 @@
 
 - 🔍 **語意檢索** — 以向量相似度找答案，不必比對關鍵字；高相似度直接回答，否則彙整多筆內容摘要
 - 🗂️ **知識庫管理** — 問題分類、分類項目、問答內容與狀態（Verified / Stale / Inferred / Superseded）
-- 🏠 **Space 隔離** — 個人 Space 與共用 Space，角色分 owner / member / viewer，授權一律由伺服器判斷
+- 🏠 **Space 隔離** — 個人 Space 與共用 Space，角色分 owner / member / viewer，授權一律由伺服器判斷；使用者可以自己建立空間（側邊欄的空間選單，或手機版「我的」→「建立新空間」），建立者是 owner，每人最多擁有 10 個
 - 💬 **串流聊天室** — SSE 串流輸出、Markdown 渲染、程式碼高亮與複製、輸出時仍可往上捲動
 - ✉️ **自行註冊** — 信箱 + Gmail 驗證信，點連結後才建立帳號；密碼以 PBKDF2-SHA512 儲存
 - 📱 **PWA 與手機版** — 可安裝到桌面 / 手機；手機版是原生 App 式的底部分頁（問答 / 歷史 / 暫存區 / 我的），長按對話可刪除，登入保持 30 天
@@ -238,7 +238,7 @@ docker run -d -p 8007:8007 -e QDRANT_HOST=<qdrant-host> -e QDRANT_PORT=6333 --na
 | --- | --- | --- |
 | `POST` | `/Auth/Login` | 登入並取得 Access / Refresh Token |
 | `POST` | `/Auth/Register`、`/Auth/VerifyEmail` | 自行註冊與驗證信箱 |
-| `GET` | `/Space` | 目前使用者可存取的 Space |
+| `GET` `POST` `PUT` | `/Space`、`/Space/{id}` | 可存取的 Space；建立新空間（建立者為 owner，只接受登入）；重新命名（只有 owner） |
 | `GET` `POST` `PUT` `DELETE` | `/User` | 使用者管理 |
 | `GET` `POST` `PUT` `DELETE` | `/QaType`、`/QaTypeItem` | 問答分類與分類項目 |
 | `GET` `POST` `PUT` `DELETE` | `/Question` | 問答內容（新增 / 更新 / 刪除會同步向量） |

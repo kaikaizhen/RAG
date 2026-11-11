@@ -56,6 +56,8 @@ namespace RAG.Tests.Infrastructure
             builder.UseSetting("Jwt:SecretFilePath", SecretFilePath);
             builder.UseSetting("RagOption:InternalApiKey", "test-internal-key");
             builder.UseSetting("Webhooks:DispatcherEnabled", "false");
+            // 測試會在短時間內建立很多空間；限流本身由專門的測試以較小的值驗證
+            builder.UseSetting("SpaceManagement:CreatePerMinute", "1000");
 
             builder.ConfigureServices(services =>
             {

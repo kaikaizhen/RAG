@@ -37,6 +37,7 @@ namespace RAG.Extensions
                     .AddNativeJwtAuthentication(configuration)
                     .AddRegistration(configuration)
                     .AddInbox()
+                    .AddSpaceManagement(configuration)
                     .AddWebhooks(configuration)
                     .AddSpaceRuntime()
                     .AddSkillRuntime(configuration, env)
