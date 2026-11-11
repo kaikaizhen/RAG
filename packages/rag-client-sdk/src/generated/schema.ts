@@ -1553,6 +1553,274 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/Webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WebhookVM"][];
+                        "application/json": components["schemas"]["WebhookVM"][];
+                        "text/json": components["schemas"]["WebhookVM"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveWebhookParam"];
+                    "text/json": components["schemas"]["SaveWebhookParam"];
+                    "application/*+json": components["schemas"]["SaveWebhookParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreateWebhookVM"];
+                        "application/json": components["schemas"]["CreateWebhookVM"];
+                        "text/json": components["schemas"]["CreateWebhookVM"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Webhook/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveWebhookParam"];
+                    "text/json": components["schemas"]["SaveWebhookParam"];
+                    "application/*+json": components["schemas"]["SaveWebhookParam"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WebhookVM"];
+                        "application/json": components["schemas"]["WebhookVM"];
+                        "text/json": components["schemas"]["WebhookVM"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Webhook/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WebhookDeliveryVM"];
+                        "application/json": components["schemas"]["WebhookDeliveryVM"];
+                        "text/json": components["schemas"]["WebhookDeliveryVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Webhook/{id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WebhookDeliveryVM"][];
+                        "application/json": components["schemas"]["WebhookDeliveryVM"][];
+                        "text/json": components["schemas"]["WebhookDeliveryVM"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/Webhook/{id}/deliveries/{deliveryId}/redeliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                    deliveryId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WebhookDeliveryVM"];
+                        "application/json": components["schemas"]["WebhookDeliveryVM"];
+                        "text/json": components["schemas"]["WebhookDeliveryVM"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ErrorVM"];
+                        "application/json": components["schemas"]["ErrorVM"];
+                        "text/json": components["schemas"]["ErrorVM"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1643,6 +1911,20 @@ export interface components {
             nameZh?: null | string;
             nameEn?: null | string;
             nameOther?: null | string;
+        };
+        CreateWebhookVM: {
+            secret?: string;
+            /** Format: int32 */
+            id?: number;
+            name?: string;
+            url?: string;
+            events?: string[];
+            isActive?: boolean;
+            /** Format: int32 */
+            consecutiveFailures?: number;
+            disabledReason?: null | string;
+            /** Format: date-time */
+            createAt?: string;
         };
         CurrentSpaceVM: {
             /** Format: int32 */
@@ -1750,6 +2032,12 @@ export interface components {
             status?: string;
             message?: string;
         };
+        SaveWebhookParam: {
+            name: string;
+            url: string;
+            events: string[];
+            isActive?: boolean;
+        };
         SendChatParam: {
             question: string;
             type?: null | string;
@@ -1819,6 +2107,39 @@ export interface components {
         };
         VerifyEmailParam: {
             token: string;
+        };
+        WebhookDeliveryVM: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            webhookID?: number;
+            eventID?: string;
+            event?: string;
+            status?: string;
+            /** Format: int32 */
+            attempts?: number;
+            /** Format: date-time */
+            nextAttemptAt?: null | string;
+            /** Format: int32 */
+            lastStatusCode?: null | number;
+            lastError?: null | string;
+            /** Format: date-time */
+            createAt?: string;
+            /** Format: date-time */
+            deliveredAt?: null | string;
+        };
+        WebhookVM: {
+            /** Format: int32 */
+            id?: number;
+            name?: string;
+            url?: string;
+            events?: string[];
+            isActive?: boolean;
+            /** Format: int32 */
+            consecutiveFailures?: number;
+            disabledReason?: null | string;
+            /** Format: date-time */
+            createAt?: string;
         };
     };
     responses: never;

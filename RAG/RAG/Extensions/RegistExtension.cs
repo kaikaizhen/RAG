@@ -12,6 +12,7 @@ using RAG.Services.Interfaces;
 using RAG.Registration;
 using RAG.Skills;
 using RAG.Tools;
+using RAG.Webhooks;
 using RAG.Spaces;
 
 
@@ -36,6 +37,7 @@ namespace RAG.Extensions
                     .AddNativeJwtAuthentication(configuration)
                     .AddRegistration(configuration)
                     .AddInbox()
+                    .AddWebhooks(configuration)
                     .AddSpaceRuntime()
                     .AddSkillRuntime(configuration, env)
                     .AddContextRuntime(configuration)

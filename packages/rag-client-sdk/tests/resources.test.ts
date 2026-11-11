@@ -164,6 +164,42 @@ describe('CRUD resources', () => {
     expect(server.requests[6]!.body).toEqual({ qaItemTypeID: 3 });
   });
 
+  it('webhooks 走對的 method / path / body', async () => {
+    const hook = { id: 3, name: 'h', url: 'https://example.com/h', events: ['draft.created'], isActive: true, consecutiveFailures: 0, createAt: '2026-11-08T00:00:00Z' };
+    const delivery = { id: 9, webhookID: 3, eventID: 'e', event: 'ping', status: 'Succeeded', attempts: 1, createAt: '2026-11-08T00:00:00Z' };
+    const server = fakeServer({
+      'GET /api/v1/Webhook': () => ({ status: 200, body: [hook] }),
+      'POST /api/v1/Webhook': () => ({ status: 200, body: { ...hook, secret: 'whsec_x' } }),
+      'PUT /api/v1/Webhook/3': () => ({ status: 200, body: hook }),
+      'DELETE /api/v1/Webhook/3': () => ({ status: 200, body: { state: 'Success', message: 'ok' } }),
+      'POST /api/v1/Webhook/3/test': () => ({ status: 200, body: delivery }),
+      'GET /api/v1/Webhook/3/deliveries': () => ({ status: 200, body: [delivery] }),
+      'POST /api/v1/Webhook/3/deliveries/9/redeliver': () => ({ status: 200, body: delivery }),
+    });
+    const client = await signedIn(server.fetch);
+    const input = { name: 'h', url: 'https://example.com/h', events: ['draft.created'] };
+
+    await client.webhooks.list();
+    const created = await client.webhooks.create(input);
+    await client.webhooks.update(3, { ...input, isActive: false });
+    await client.webhooks.delete(3);
+    await client.webhooks.test(3);
+    await client.webhooks.deliveries(3);
+    await client.webhooks.redeliver(3, 9);
+
+    expect(created.secret).toBe('whsec_x');
+    expect(server.requests.map((r) => `${r.method} ${r.path}`)).toEqual([
+      'GET /api/v1/Webhook',
+      'POST /api/v1/Webhook',
+      'PUT /api/v1/Webhook/3',
+      'DELETE /api/v1/Webhook/3',
+      'POST /api/v1/Webhook/3/test',
+      'GET /api/v1/Webhook/3/deliveries',
+      'POST /api/v1/Webhook/3/deliveries/9/redeliver',
+    ]);
+    expect(server.requests[2]!.body).toMatchObject({ isActive: false });
+  });
+
   it('register / verifyEmail 不需登入，不帶 Authorization', async () => {
     const ok = () => ({ status: 200, body: { status: 'pending', message: 'ok' } });
     const server = fakeServer({ 'POST /api/v1/Auth/Register': ok, 'POST /api/v1/Auth/VerifyEmail': ok });

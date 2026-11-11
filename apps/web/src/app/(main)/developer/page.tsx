@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { API_BASE_URL, describeError, getClient } from "@/lib/rag"
 import { skillTemplate } from "./skill-template"
+import { WebhooksSection } from "./webhooks"
 
 const SCOPES = [
   { value: "knowledge.search", label: "搜尋知識庫", hint: "只讀，取得檢索到的內容" },
@@ -271,6 +272,8 @@ export default function DeveloperPage() {
           )}
         </CardContent>
       </Card>
+
+      <WebhooksSection />
 
       <Card>
         <CardHeader>

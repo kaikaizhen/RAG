@@ -4,6 +4,7 @@ using RAG.Models.Dtos.Question;
 using RAG.Models.Entities;
 using RAG.Repositories.Interfaces;
 using RAG.Services.Interfaces;
+using RAG.Webhooks;
 using RAG.SpaceRuntime;
 using System.Net;
 using System.Security.Cryptography;
@@ -41,10 +42,12 @@ namespace RAG.Inbox
         private readonly WenDaHubContext _db;
         private readonly ISpaceContextAccessor _spaceContext;
         private readonly IQuestionService _questions;
+        private readonly IWebhookPublisher _webhooks;
         private readonly TimeProvider _time;
 
-        public InboxService(WenDaHubContext db, ISpaceContextAccessor spaceContext, IQuestionService questions, TimeProvider time)
+        public InboxService(WenDaHubContext db, ISpaceContextAccessor spaceContext, IQuestionService questions, IWebhookPublisher webhooks, TimeProvider time)
         {
+            _webhooks = webhooks;
             _db = db;
             _spaceContext = spaceContext;
             _questions = questions;
@@ -85,6 +88,7 @@ namespace RAG.Inbox
             };
             _db.KnowledgeDraft.Add(draft);
             await _db.SaveChangesAsync(cancellationToken);
+            await _webhooks.PublishAsync(space.UserId, space.SpaceId, WebhookEvents.DraftCreated, DraftEventData(draft), cancellationToken);
             return draft;
         }
 
@@ -154,6 +158,7 @@ namespace RAG.Inbox
             draft.ReviewedAt = _time.GetUtcNow().UtcDateTime;
             draft.Version = NewVersion();
             await _db.SaveChangesAsync(cancellationToken);
+            await _webhooks.PublishAsync(space.UserId, space.SpaceId, WebhookEvents.DraftAccepted, DraftEventData(draft), cancellationToken);
             return draft;
         }
 
@@ -166,8 +171,19 @@ namespace RAG.Inbox
             draft.ReviewedAt = _time.GetUtcNow().UtcDateTime;
             draft.Version = NewVersion();
             await SaveGuardedAsync(cancellationToken);
+            await _webhooks.PublishAsync(space.UserId, space.SpaceId, WebhookEvents.DraftRejected, DraftEventData(draft), cancellationToken);
             return draft;
         }
+
+        /// <summary>通知內容只放編號與來源資訊，不放問答本文；對方需要內容時用自己送出的原件對應 sourceRef</summary>
+        private static object DraftEventData(KnowledgeDraft draft) => new
+        {
+            draftID = draft.ID,
+            status = draft.Status,
+            source = draft.Source,
+            sourceRef = draft.SourceRef,
+            questionID = draft.AcceptedQuestionID
+        };
 
         private async Task<KnowledgeDraft> GetPendingAsync(int id, SpaceContext space, CancellationToken cancellationToken)
         {

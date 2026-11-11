@@ -108,3 +108,77 @@ public class KnowledgeDraft
 
     public virtual UserCache User { get; set; } = null!;
 }
+
+public static class DeliveryStatus
+{
+    public const string Pending = "Pending";
+    public const string Succeeded = "Succeeded";
+
+    /// <summary>重試次數用完或遇到不可重試的錯誤；可以由使用者手動重送</summary>
+    public const string Dead = "Dead";
+}
+
+/// <summary>
+/// 使用者設定的 webhook：事件發生時，系統以簽章的 HTTPS 請求通知這個網址，讓使用者把功能接到自己的服務
+/// </summary>
+public class Webhook
+{
+    public int ID { get; set; }
+
+    public int UserID { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>只接受 https</summary>
+    public string Url { get; set; } = string.Empty;
+
+    /// <summary>簽章用的密鑰，以 AES-GCM 加密後儲存；明文只在建立時回傳一次</summary>
+    public string SecretProtected { get; set; } = string.Empty;
+
+    /// <summary>以逗號分隔的訂閱事件</summary>
+    public string Events { get; set; } = string.Empty;
+
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>連續失敗（重試用完）的事件數；成功一次就歸零，達上限自動停用</summary>
+    public int ConsecutiveFailures { get; set; }
+
+    public string? DisabledReason { get; set; }
+
+    public DateTime CreateAt { get; set; }
+
+    public virtual UserCache User { get; set; } = null!;
+}
+
+/// <summary>
+/// 一次事件通知（outbox）：先寫進資料庫，再由背景程式送出；失敗會依退避時間重試，重試用完標記 Dead，可手動重送
+/// </summary>
+public class WebhookDelivery
+{
+    public int ID { get; set; }
+
+    public int WebhookID { get; set; }
+
+    /// <summary>事件編號（也是請求的 X-RAG-Delivery 以外的 payload.id）；對方可用它去重</summary>
+    public string EventID { get; set; } = string.Empty;
+
+    public string Event { get; set; } = string.Empty;
+
+    public string Payload { get; set; } = string.Empty;
+
+    public string Status { get; set; } = DeliveryStatus.Pending;
+
+    public int Attempts { get; set; }
+
+    public DateTime? NextAttemptAt { get; set; }
+
+    public int? LastStatusCode { get; set; }
+
+    public string? LastError { get; set; }
+
+    public DateTime CreateAt { get; set; }
+
+    public DateTime? DeliveredAt { get; set; }
+
+    public virtual Webhook Webhook { get; set; } = null!;
+}

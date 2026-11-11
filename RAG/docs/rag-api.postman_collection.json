@@ -1542,6 +1542,265 @@
           }
         }
       ]
+    },
+    {
+      "name": "Webhook 模組",
+      "item": [
+        {
+          "name": "GET /Webhook",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Webhook"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "POST /Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Webhook"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"url\": \"string\",\n  \"events\": [\n    \"string\"\n  ],\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /Webhook/{id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Webhook/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Webhook",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"url\": \"string\",\n  \"events\": [\n    \"string\"\n  ],\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /Webhook/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Webhook/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Webhook",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /Webhook/{id}/test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Webhook/:id/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Webhook",
+                ":id",
+                "test"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /Webhook/{id}/deliveries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Webhook/:id/deliveries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Webhook",
+                ":id",
+                "deliveries"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /Webhook/{id}/deliveries/{deliveryId}/redeliver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Space-Id",
+                "value": "{{spaceId}}",
+                "disabled": true,
+                "description": "指定 Space；留空 / 停用則使用預設 Space"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/Webhook/:id/deliveries/:deliveryId/redeliver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Webhook",
+                ":id",
+                "deliveries",
+                ":deliveryId",
+                "redeliver"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                },
+                {
+                  "key": "deliveryId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

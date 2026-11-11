@@ -11,6 +11,10 @@ public partial class WenDaHubContext
 
     public virtual DbSet<KnowledgeDraft> KnowledgeDraft { get; set; }
 
+    public virtual DbSet<Webhook> Webhook { get; set; }
+
+    public virtual DbSet<WebhookDelivery> WebhookDelivery { get; set; }
+
     private static void ConfigurePlatform(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ApiToken>(entity =>
@@ -66,6 +70,50 @@ public partial class WenDaHubContext
                 .HasForeignKey(d => d.UserID)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_draft_user");
+        });
+
+        modelBuilder.Entity<Webhook>(entity =>
+        {
+            entity.HasKey(e => e.ID).HasName("PRIMARY");
+            entity.HasIndex(e => e.UserID, "ix_webhook_user");
+
+            entity.Property(e => e.ID).HasColumnType("int(11)");
+            entity.Property(e => e.UserID).HasColumnType("int(11)");
+            entity.Property(e => e.Name).HasMaxLength(50).UseCollation("utf8mb4_unicode_ci");
+            entity.Property(e => e.Url).HasMaxLength(500);
+            entity.Property(e => e.SecretProtected).HasMaxLength(200);
+            entity.Property(e => e.Events).HasMaxLength(200);
+            entity.Property(e => e.DisabledReason).HasMaxLength(200).UseCollation("utf8mb4_unicode_ci");
+            entity.Property(e => e.CreateAt).HasColumnType("datetime");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserID)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_webhook_user");
+        });
+
+        modelBuilder.Entity<WebhookDelivery>(entity =>
+        {
+            entity.HasKey(e => e.ID).HasName("PRIMARY");
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt }, "ix_delivery_due");
+            entity.HasIndex(e => new { e.WebhookID, e.CreateAt }, "ix_delivery_webhook");
+
+            entity.Property(e => e.ID).HasColumnType("int(11)");
+            entity.Property(e => e.WebhookID).HasColumnType("int(11)");
+            entity.Property(e => e.EventID).HasMaxLength(36);
+            entity.Property(e => e.Event).HasMaxLength(40);
+            entity.Property(e => e.Payload).HasColumnType("text").UseCollation("utf8mb4_unicode_ci");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue(DeliveryStatus.Pending);
+            entity.Property(e => e.LastStatusCode).HasColumnType("int(11)");
+            entity.Property(e => e.LastError).HasMaxLength(300).UseCollation("utf8mb4_unicode_ci");
+            entity.Property(e => e.NextAttemptAt).HasColumnType("datetime");
+            entity.Property(e => e.CreateAt).HasColumnType("datetime");
+            entity.Property(e => e.DeliveredAt).HasColumnType("datetime");
+
+            entity.HasOne(d => d.Webhook).WithMany()
+                .HasForeignKey(d => d.WebhookID)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_delivery_webhook");
         });
     }
 }

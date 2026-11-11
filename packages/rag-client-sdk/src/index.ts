@@ -33,6 +33,11 @@ export {
   type CreateDraftInput,
   type UpdateDraftInput,
   type AcceptDraftInput,
+  type Webhook,
+  type CreatedWebhook,
+  type SaveWebhookInput,
+  type WebhookDelivery,
+  type WebhookEvent,
 } from './client.js';
 export {
   QuestionQueryType,

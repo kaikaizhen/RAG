@@ -28,6 +28,7 @@ namespace RAG.Tests.Infrastructure
         public static async Task ResetAsync(RagApiFactory factory, bool withDefaultSpace = true)
         {
             factory.RagGateway.Reset();
+            factory.WebhookSender.Reset();
             await factory.WithDbAsync(async db =>
             {
                 await db.Database.EnsureDeletedAsync();

@@ -35,6 +35,13 @@ export type CreateDraftInput = Schemas['CreateDraftParam'];
 export type UpdateDraftInput = Schemas['UpdateDraftParam'];
 export type AcceptDraftInput = Schemas['AcceptDraftParam'];
 export type DraftStatus = 'Pending' | 'Accepted' | 'Rejected';
+export type Webhook = Schemas['WebhookVM'];
+/** 建立 webhook 的回應：`secret` 簽章密鑰只會出現這一次 */
+export type CreatedWebhook = Schemas['CreateWebhookVM'];
+export type SaveWebhookInput = Schemas['SaveWebhookParam'];
+export type WebhookDelivery = Schemas['WebhookDeliveryVM'];
+/** 可訂閱的事件 */
+export type WebhookEvent = 'draft.created' | 'draft.accepted' | 'draft.rejected';
 
 /** ChatStream 事件：chat = 這次問答所屬的聊天室編號（先於文字送出）；text = 一段回答文字 */
 export type ChatStreamEvent = { type: 'chat'; chatId: string } | { type: 'text'; text: string };
@@ -185,6 +192,24 @@ export class RagClient {
     /** 接受：此時才寫入知識庫（預設狀態 Inferred）。需要該 Space 的 knowledge.write */
     accept: (id: number, input: AcceptDraftInput = {}) => this.request<Draft>('POST', `/Inbox/${pathId(id)}/accept`, { body: input }),
     reject: (id: number) => this.request<Draft>('POST', `/Inbox/${pathId(id)}/reject`, { body: {} }),
+  };
+
+  /**
+   * Webhook：事件發生時，伺服器以簽章的 HTTPS 請求通知你的網址（一律 https、必須是公開網路上的位址）。
+   * 驗證方式：`X-RAG-Signature` = `sha256=` + HMAC-SHA256(secret, `<X-RAG-Timestamp>.<body>`)，並檢查時間戳避免重放；
+   * 用 payload 的 `id` 去重（重送與重試都是同一個 id）。失敗會自動重試，用完標記 Dead，可手動重送。
+   */
+  readonly webhooks = {
+    list: () => this.request<Webhook[]>('GET', '/Webhook'),
+    create: (input: SaveWebhookInput) => this.request<CreatedWebhook>('POST', '/Webhook', { body: input }),
+    update: (id: number, input: SaveWebhookInput) => this.request<Webhook>('PUT', `/Webhook/${pathId(id)}`, { body: input }),
+    delete: (id: number) => this.request<MutationResult>('DELETE', `/Webhook/${pathId(id)}`),
+    /** 送出測試事件（ping）並立刻回報結果 */
+    test: (id: number) => this.request<WebhookDelivery>('POST', `/Webhook/${pathId(id)}/test`, { body: {} }),
+    deliveries: (id: number) => this.request<WebhookDelivery[]>('GET', `/Webhook/${pathId(id)}/deliveries`),
+    /** 手動重送一筆通知（重試次數歸零、立刻送出） */
+    redeliver: (id: number, deliveryId: number) =>
+      this.request<WebhookDelivery>('POST', `/Webhook/${pathId(id)}/deliveries/${pathId(deliveryId)}/redeliver`, { body: {} }),
   };
 
   readonly users = {

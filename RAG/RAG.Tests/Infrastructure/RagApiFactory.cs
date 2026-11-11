@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RAG.Rag;
+using RAG.Webhooks;
 using RAG.Models.Entities;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -26,6 +27,11 @@ namespace RAG.Tests.Infrastructure
         /// 取代真實 RAG Server 的 gateway（記錄呼叫的 RagScope）
         /// </summary>
         public FakeRagGateway RagGateway { get; } = new();
+
+        /// <summary>
+        /// 取代真實的 webhook 送出（背景送出已關閉，測試以 IWebhookDispatcher.RunOnceAsync 手動驅動）
+        /// </summary>
+        public FakeWebhookSender WebhookSender { get; } = new();
 
         private readonly string _databaseName = $"rag-tests-{Guid.NewGuid()}";
 
@@ -49,6 +55,7 @@ namespace RAG.Tests.Infrastructure
             builder.UseEnvironment("Testing");
             builder.UseSetting("Jwt:SecretFilePath", SecretFilePath);
             builder.UseSetting("RagOption:InternalApiKey", "test-internal-key");
+            builder.UseSetting("Webhooks:DispatcherEnabled", "false");
 
             builder.ConfigureServices(services =>
             {
@@ -59,6 +66,9 @@ namespace RAG.Tests.Infrastructure
                              || d.ServiceType == typeof(WenDaHubContext))
                     .ToList();
                 foreach (var descriptor in dbDescriptors) services.Remove(descriptor);
+
+                services.RemoveAll<IWebhookSender>();
+                services.AddSingleton<IWebhookSender>(WebhookSender);
 
                 services.RemoveAll<IRagGateway>();
                 services.AddSingleton<IRagGateway>(RagGateway);
