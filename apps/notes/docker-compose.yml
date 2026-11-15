@@ -1,0 +1,50 @@
+# 學習筆記：在 apps/notes 執行 docker compose up -d --build，.env 依 .env.example 填好放在同一個資料夾。
+# 只綁在本機的 port，由 Nginx 轉發，和 rag-api 的做法相同。筆記網站在前端 repo，部署在 Vercel。
+services:
+  notes-api:
+    build:
+      context: .
+    image: notes-api
+    container_name: notes-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://notes:${POSTGRES_PASSWORD:?請在 .env 設定 POSTGRES_PASSWORD}@notes-db:5432/learning_notes
+      MCP_TOKEN: ${MCP_TOKEN:?請在 .env 設定 MCP_TOKEN}
+      API_TOKEN: ${API_TOKEN:?請在 .env 設定 API_TOKEN}
+      NOTES_OWNER_RAG_USER_ID: ${NOTES_OWNER_RAG_USER_ID:-}
+      # 背景同步：兩個都有才會啟動
+      RAG_API_URL: ${RAG_API_URL:?請在 .env 設定 RAG_API_URL}
+      SYNC_KEY: ${SYNC_KEY:-}
+      # 公開知識的 Space：用這個帳號寫入，沒設定就不同步公開專案
+      RAG_PUBLIC_ACCOUNT: ${RAG_PUBLIC_ACCOUNT:-}
+      RAG_PUBLIC_PASSWORD: ${RAG_PUBLIC_PASSWORD:-}
+      RAG_PUBLIC_SPACE_ID: ${RAG_PUBLIC_SPACE_ID:-}
+      HOST: 0.0.0.0
+      PORT: 3100
+    # Nginx 轉發 /mcp、/health 和 /api/（給 Vercel 上的筆記網站用，靠 API_TOKEN 保護）
+    ports:
+      - "127.0.0.1:${NOTES_API_PORT:-8008}:3100"
+    depends_on:
+      notes-db:
+        condition: service_healthy
+
+  notes-db:
+    # 用 Debian 版，不用 alpine：pg_trgm 要靠系統語系才能把中文切成 trigram
+    image: postgres:17
+    container_name: notes-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: notes
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?請在 .env 設定 POSTGRES_PASSWORD}
+      POSTGRES_DB: learning_notes
+    volumes:
+      - notes-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notes -d learning_notes"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # 不對外開 port，只有 notes-api 連得到
+
+volumes:
+  notes-db-data:

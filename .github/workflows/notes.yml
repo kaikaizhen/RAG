@@ -1,0 +1,29 @@
+name: Notes
+
+# 只在學習筆記的後端（apps/notes）有改動時跑測試，不影響其他服務。筆記網站在前端 repo
+on:
+  push:
+    branches: [main]
+    paths: ['apps/notes/**', '.github/workflows/notes.yml']
+  pull_request:
+    paths: ['apps/notes/**', '.github/workflows/notes.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/notes
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/notes/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test

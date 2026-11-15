@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+
+# 匯入用的暫存內容和資料庫備份，含公司筆記，不進 git
+imports/
+backups/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.claude/

@@ -81,6 +81,7 @@ RAG/                        .NET Web API
   └ RAG.Tests/              單元 / 整合測試
 RAG_Server/                 Python FastAPI 向量服務（main.py、tests/）
 apps/web/                   Next.js 前端（使用 packages/rag-client-sdk）
+apps/notes/                 學習筆記的 API + MCP：Claude 用 MCP 記筆記，同步進 Space（網站在前端 repo doraeyi/ragence）
 packages/rag-client-sdk/    共用 TypeScript client SDK
 ```
 
@@ -197,6 +198,7 @@ docker run -d -p 8007:8007 -e QDRANT_HOST=<qdrant-host> -e QDRANT_PORT=6333 --na
 | rag-api (.NET) | 8006 | 主要 API |
 | rag-ai (FastAPI) | 8007 | 向量化與檢索 |
 | Qdrant | 6333 | 向量資料庫 |
+| notes-api | 8008 | 學習筆記的 API 和 MCP，在 `apps/notes` 用自己的 docker compose 啟動 |
 
 建議以 Nginx 同網域反向代理：`/` → 前端、`/api/` → API、`/ai/` → 向量服務。聊天串流路徑需關閉 `proxy_buffering`。
 
