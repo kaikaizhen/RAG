@@ -134,7 +134,7 @@ export function createApp(deps: { db: Database; users: Users; worker?: Pick<RagW
   // 無狀態模式沒有伺服器推播的串流，也沒有 session 可以結束。
   app.on(['GET', 'DELETE'], '/mcp', (c) => c.json({ error: 'method not allowed' }, 405, { Allow: 'POST' }));
 
-  // 給前端伺服器用的 API，不對外開放（Nginx 只轉 /mcp 和 /health）。筆記只有 GET，前端就算出事也改不了筆記；
+  // 給 Vercel 上的筆記網站用的 API，靠 API_TOKEN 保護。筆記只有 GET，網站就算出事也改不了筆記；
   // 前端驗過登入 cookie 後用 X-Notes-User 告訴這裡是哪位使用者。
   app.use('/api/*', async (c, next) => {
     if (!tokenMatches(c.req.header('authorization'), deps.apiToken)) {

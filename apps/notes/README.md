@@ -2,24 +2,24 @@
 
 記錄每次程式改了什麼，並累積程式邏輯和商業邏輯的觀念。Claude 透過 MCP 寫入和查詢。原本是獨立的 repo（doraeyi/learning-notes），搬進 RAG 後放在 `apps/notes`，和問答系統部署在同一台主機。
 
-目前有後端、MCP 和唯讀前端。寫入都透過 Claude，網頁只能看。
+這裡是後端：API、MCP 和資料庫。筆記網站在前端 repo [doraeyi/ragence](https://github.com/doraeyi/ragence) 的 `apps/notes`，部署在 Vercel。寫入都透過 Claude，網頁只能看。
 
 從開新專案、記筆記到用 RAG 問答的完整步驟，見 [docs/使用流程.md](docs/使用流程.md)。
 
 ## 架構
 
 ```
-Claude ─HTTPS + MCP_TOKEN→ 反向代理 → api（Hono + MCP）→ PostgreSQL
-瀏覽器 ─HTTPS + 密碼登入→ 反向代理 → frontend（Next.js）─API_TOKEN→ api
+Claude ─HTTPS + MCP_TOKEN→ Nginx → api（Hono + MCP）→ PostgreSQL
+瀏覽器 ─HTTPS + 密碼登入→ 筆記網站（Vercel）─HTTPS + API_TOKEN→ Nginx → api
 ```
 
 | 路徑 | 說明 |
 | --- | --- |
 | `POST /mcp` | MCP（無狀態 Streamable HTTP），需要 `Authorization: Bearer <MCP_TOKEN>` |
 | `GET /health` | 健康檢查，不需要 token |
-| `GET /api/*` | 前端用的唯讀 API，需要 `API_TOKEN`，Nginx 不對外開放 |
+| `/api/*` | 筆記網站用的 API，需要 `API_TOKEN` |
 
-前端自己做密碼登入。Cloudflare Access 可以再加一層，但不能取代它，因為主機可以略過 Cloudflare 直接連。
+網站在 Vercel，所以 `/api` 要對外開放，靠 `API_TOKEN` 保護。拿到這個 token 就能以任何使用者的身分讀筆記，所以它只能放在 Vercel 的環境變數和這台主機的 `.env`，至少 32 字元，外洩時兩邊一起換。
 
 | 檔案 | 內容 |
 | --- | --- |
@@ -45,11 +45,7 @@ npm test
 npm run typecheck
 ```
 
-前端在 `web/`，有自己的相依套件。設定 `web/.env.local`（`API_URL`、`API_TOKEN`、`SESSION_SECRET`、`RAG_API_URL`）後啟動：
-
-```bash
-npm --prefix web run dev
-```
+筆記網站在前端 repo [doraeyi/ragence](https://github.com/doraeyi/ragence) 的 `apps/notes`。本機開發時，把網站的 `API_URL` 指到這裡啟動的 API（預設 `http://localhost:3100`），兩邊的 `API_TOKEN` 設成一樣。
 
 ## 部署（和 RAG 同一台主機）
 
@@ -59,15 +55,14 @@ npm --prefix web run dev
 docker compose up -d --build
 ```
 
-三個容器都只綁在本機，由 Nginx 轉發，和 rag-web、rag-api 的做法相同：
+兩個容器都只綁在本機，由 Nginx 轉發，和 rag-api 的做法相同：
 
 | 容器 | 本機 port | 對外開放 |
 | --- | --- | --- |
-| notes-api | 8008（`NOTES_API_PORT`） | 只有 `/mcp` 和 `/health` |
-| notes-web | 8009（`NOTES_WEB_PORT`） | 整個網站 |
+| notes-api | 8008（`NOTES_API_PORT`） | `/mcp`、`/health`、`/api/` |
 | notes-db | 不開 | 不開 |
 
-Nginx 設定範例，網域換成 `.env` 的 `NOTES_HOST` 和筆記網站的網域，HTTPS 憑證照主機原本的設定加上去。`/api` 一定不能轉出去：
+Nginx 設定範例，網域換成實際的，HTTPS 憑證照主機原本的設定加上去。一定要走 HTTPS，`API_TOKEN` 和 `MCP_TOKEN` 都在標頭裡：
 
 ```nginx
 server {
@@ -77,18 +72,12 @@ server {
         proxy_buffering off;
     }
     location = /health { proxy_pass http://127.0.0.1:8008; }
+    location /api/ { proxy_pass http://127.0.0.1:8008; }
     location / { return 404; }
 }
-
-server {
-    server_name notes.doraeyi.com;
-    location / {
-        proxy_pass http://127.0.0.1:8009;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
 ```
+
+筆記網站在 Vercel 的設定見前端 repo。網站的 `API_URL` 設成這裡的網址（例如 `https://notes-api.doraeyi.com`），`API_TOKEN` 和這裡的 `.env` 相同。
 
 ## 登入和帳號
 

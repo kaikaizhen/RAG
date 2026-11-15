@@ -1,5 +1,5 @@
 # 學習筆記：在 apps/notes 執行 docker compose up -d --build，.env 依 .env.example 填好放在同一個資料夾。
-# 只綁在本機的 port，由 Nginx 轉發，和 rag-web / rag-api 的做法相同。
+# 只綁在本機的 port，由 Nginx 轉發，和 rag-api 的做法相同。筆記網站在前端 repo，部署在 Vercel。
 services:
   notes-api:
     build:
@@ -21,30 +21,12 @@ services:
       RAG_PUBLIC_SPACE_ID: ${RAG_PUBLIC_SPACE_ID:-}
       HOST: 0.0.0.0
       PORT: 3100
-    # Nginx 只能轉發 /mcp 和 /health；/api 只給 notes-web 用，不要對外開放
+    # Nginx 轉發 /mcp、/health 和 /api/（給 Vercel 上的筆記網站用，靠 API_TOKEN 保護）
     ports:
       - "127.0.0.1:${NOTES_API_PORT:-8008}:3100"
     depends_on:
       notes-db:
         condition: service_healthy
-
-  notes-web:
-    build:
-      context: web
-    image: notes-web
-    container_name: notes-web
-    restart: unless-stopped
-    environment:
-      API_URL: http://notes-api:3100
-      API_TOKEN: ${API_TOKEN:?請在 .env 設定 API_TOKEN}
-      SESSION_SECRET: ${SESSION_SECRET:?請在 .env 設定 SESSION_SECRET}
-      RAG_API_URL: ${RAG_API_URL:?請在 .env 設定 RAG_API_URL}
-      RAG_WEB_URL: ${RAG_WEB_URL:-https://ragence.doraeyi.com}
-      MCP_PUBLIC_URL: https://${NOTES_HOST:?請在 .env 設定 NOTES_HOST}/mcp
-    ports:
-      - "127.0.0.1:${NOTES_WEB_PORT:-8009}:3300"
-    depends_on:
-      - notes-api
 
   notes-db:
     # 用 Debian 版，不用 alpine：pg_trgm 要靠系統語系才能把中文切成 trigram
