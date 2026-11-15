@@ -1,0 +1,10 @@
+node_modules
+dist
+test
+web
+imports
+backups
+.env
+.env.*
+.git
+*.md
